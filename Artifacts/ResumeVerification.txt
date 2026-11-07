@@ -1,0 +1,1 @@
+PASS: fresh Play session restores completed stage 1 with power 743 from local storage.

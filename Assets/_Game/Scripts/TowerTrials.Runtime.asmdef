@@ -1,0 +1,5 @@
+{
+  "name": "TowerTrials.Runtime",
+  "rootNamespace": "TowerTrials",
+  "references": ["Unity.InputSystem", "Unity.ugui", "Unity.TextMeshPro"]
+}
