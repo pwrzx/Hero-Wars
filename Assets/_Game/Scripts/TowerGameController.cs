@@ -34,6 +34,7 @@ namespace TowerTrials
         private CombatFeedback feedback;
         private CombatAudio combatAudio;
         private UnityEngine.UI.Button retryButton;
+        private UnityEngine.UI.Button homeButton;
         private readonly List<TowerView> towers = new List<TowerView>();
         private readonly List<Badge> badges = new List<Badge>();
         private readonly List<UnityEngine.UI.Image> progress = new List<UnityEngine.UI.Image>();
@@ -173,6 +174,11 @@ namespace TowerTrials
             hero = Model("Knight", presentation, new Vector3(HomeX, FloorY + 0.12f, -0.12f), 0.78f);
             hero.localRotation = Quaternion.Euler(0, 180 - characterFacingAngle, 0);
             heroMotion = hero.GetComponent<CharacterMotion>();
+            if (!preview)
+            {
+                HeroCenterCatalog catalog = HeroCenterCatalog.Load();
+                if (catalog != null) heroMotion.UseHeroLoadout(catalog, HeroProfile.Load(catalog));
+            }
 
             for (int t = 0; t < Run.Definition.towers.Length; t++)
             {
@@ -269,6 +275,12 @@ namespace TowerTrials
             Place(stageLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -104), new Vector2(920, 46));
             retryButton = Button("Retry", header, "Retry", RestartStage, false);
             Place(retryButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -20), new Vector2(224, 104));
+            homeButton = Button("HeroCenterReturn", header, "Home", () =>
+            {
+                if (!busy) HeroCenterController.ReturnToHeroCenter();
+            }, false);
+            ((GameButton)homeButton).SetRestartIcon(false);
+            Place(homeButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -130), new Vector2(224, 48));
             int towerCount = Run.Definition.towers.Length;
             for (int t = 0; t < towerCount; t++)
             {
@@ -651,6 +663,7 @@ namespace TowerTrials
         {
             busy = value;
             if (retryButton != null) retryButton.interactable = !value;
+            if (homeButton != null) homeButton.interactable = !value;
         }
 
         private void SaveProgress()

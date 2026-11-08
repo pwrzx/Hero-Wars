@@ -1,0 +1,2 @@
+PASS: 9667 Hero Center assertions.
+Catalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.

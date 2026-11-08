@@ -15,14 +15,19 @@ namespace TowerTrials
         private bool acting, knight;
         private float phase;
         private float landingTime, landingStrength;
-        private CombatPose previousPose;
-        private MeshRenderer[] surfaces;
+        private CombatPose previousPose = CombatPose.Recover;
+        private Renderer[] surfaces;
+        private Animator importedAnimator;
+        private static readonly int ImportedAttack = Animator.StringToHash("Attack");
+        private static readonly int ImportedJump = Animator.StringToHash("Jump");
+        private static readonly int ImportedDeath = Animator.StringToHash("Death");
         private Color[] surfaceColors;
         private MaterialPropertyBlock hitProperties;
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         public Transform SwordTip { get; private set; }
         public int SwingCount { get; private set; }
         public bool HasWeaponRig => weapon != null;
+        public bool HasImportedVisual => importedAnimator != null;
 
         public void Configure(bool isKnight)
         {
@@ -30,7 +35,7 @@ namespace TowerTrials
             knight = isKnight;
             // Native Unity objects must be allocated on the main thread, not by the scene loader's constructor.
             hitProperties = new MaterialPropertyBlock();
-            surfaces = GetComponentsInChildren<MeshRenderer>();
+            surfaces = GetComponentsInChildren<Renderer>();
             surfaceColors = new Color[surfaces.Length];
             for (int i = 0; i < surfaces.Length; i++) surfaceColors[i] = surfaces[i].sharedMaterial.GetColor(BaseColor);
             phase = transform.position.x * 0.8f + transform.position.y * 1.7f;
@@ -75,6 +80,21 @@ namespace TowerTrials
             Idle(0);
         }
 
+        public void UseHeroLoadout(HeroCenterCatalog catalog, HeroProfile profile)
+        {
+            foreach (Renderer original in surfaces) original.enabled = false;
+            GameObject visual = HeroAppearance.Create(catalog, profile, body, 1.65f);
+            if (visual == null)
+            {
+                foreach (Renderer original in surfaces) original.enabled = true;
+                return;
+            }
+            importedAnimator = visual.GetComponentInChildren<Animator>();
+            surfaces = visual.GetComponentsInChildren<Renderer>();
+            surfaceColors = new Color[surfaces.Length];
+            for (int i = 0; i < surfaces.Length; i++) surfaceColors[i] = surfaces[i].sharedMaterial.GetColor(BaseColor);
+        }
+
         private static Transform Pivot(string name, Transform parent, Vector3 position)
         {
             var pivot = new GameObject(name).transform;
@@ -115,6 +135,12 @@ namespace TowerTrials
             acting = true;
             t = Mathf.Clamp01(t);
             if (pose != previousPose && pose == CombatPose.Strike) SwingCount++;
+            if (pose != previousPose && importedAnimator != null)
+            {
+                if (pose == CombatPose.Anticipate) importedAnimator.SetTrigger(ImportedJump);
+                else if (pose == CombatPose.Windup) importedAnimator.SetTrigger(ImportedAttack);
+                else if (pose == CombatPose.Defeat) importedAnimator.SetTrigger(ImportedDeath);
+            }
             previousPose = pose;
             if (trail != null)
             {

@@ -2,6 +2,8 @@
 
 Unity version: **6000.6.0f1**, URP, Input System.
 
+The new front end starts in `Assets/_Game/Scenes/HeroCenter.unity`: Hero Center, Customize and Shop, using the downloaded hero, weapon and mobile UI packs. It includes saved equipment and currencies, four rarity tiers, chest unlocks and an Adventure/Home round trip. See `Docs/HeroCenter.md` for the catalog, drop rates and validation commands.
+
 Open `Assets/_Game/Scenes/TowerPrototype.unity`, choose a **9:16 portrait** Game view, and press **Play**. Swipe right toward the room you want to attack. In the Editor, click and drag right using the mouse. Start with weaker enemies and build power before attacking stronger ones. Retry resets the current stage; clearing all towers unlocks the next authored stage. The current run is saved locally.
 
 The editable Blender file is `ArtSource/Blender/HeroWars_AssetLibrary.blend`. The five exported starter models are already imported into Unity. See `Docs/DevelopmentPlan.md` for the confirmed design and remaining work.

@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Game/Scenes/HeroCenter.unity
+    guid: 08f9ff01f357b4e47b5b5facf9b323fa
+  - enabled: 1
     path: Assets/_Game/Scenes/TowerPrototype.unity
     guid: b4833d20a1695944086f547fb9f9d7b5
   - enabled: 1
