@@ -1,0 +1,4 @@
+PASS: Retry pointer click; disabled action ignores clicks.
+PASS: failure action label and text fit; keyboard Submit retries the stage.
+PASS: Next stage pointer click advances campaign.
+PASS: physical GraphicRaycaster hits Retry; routed pointer click resets the stage; every active plate/icon has rendered geometry.

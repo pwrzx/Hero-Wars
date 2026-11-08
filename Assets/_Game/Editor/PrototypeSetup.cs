@@ -21,6 +21,7 @@ public static class PrototypeSetup
         Directory.CreateDirectory("Assets/_Game/Resources/Materials");
         Directory.CreateDirectory("Assets/_Game/Data");
         AssetDatabase.Refresh();
+        PreparePolishAssets();
         if (Resources.Load<TMP_Settings>("TMP Settings") == null || TMP_Settings.defaultFontAsset == null)
             throw new InvalidOperationException("Import TMP essentials with PrototypeSetup.ImportTextResources first.");
         MakeMaterial("Stone_DeepTeal", new Color(0.12f, 0.24f, 0.27f));
@@ -93,6 +94,40 @@ public static class PrototypeSetup
     {
         if (Resources.Load<TMP_Settings>("TMP Settings") == null || TMP_Settings.defaultFontAsset == null)
             TMP_PackageResourceImporter.ImportResources(true, false, false);
+    }
+
+    [MenuItem("Tower Trials/Prepare Combat Effects")]
+    public static void PreparePolishAssets()
+    {
+        const string folder = "Assets/_Game/Resources/Materials/";
+        Directory.CreateDirectory(folder);
+        AssetDatabase.Refresh();
+        Shader glow = Shader.Find("TowerTrials/SoftGlow");
+        Shader painting = Shader.Find("TowerTrials/PaintedBackdrop");
+        if (glow == null || painting == null) throw new InvalidOperationException("Import the Tower Trials effect shaders first.");
+        string[] names = { "FX_Glow", "FX_Ring", "FX_Slash" };
+        for (int i = 0; i < names.Length; i++)
+        {
+            string path = folder + names[i] + ".mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(glow) { name = names[i] };
+                material.SetColor("_Tint", Color.white);
+                material.SetFloat("_Shape", i);
+                AssetDatabase.CreateAsset(material, path);
+            }
+        }
+        string backgroundPath = folder + "FX_Backdrop.mat";
+        Material background = AssetDatabase.LoadAssetAtPath<Material>(backgroundPath);
+        if (background == null)
+        {
+            background = new Material(painting) { name = "FX_Backdrop" };
+            background.mainTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Art/Backgrounds/AncientChasm.png");
+            if (background.mainTexture == null) throw new InvalidOperationException("The AncientChasm background is missing.");
+            AssetDatabase.CreateAsset(background, backgroundPath);
+        }
+        AssetDatabase.SaveAssets();
     }
 
     private static void MakeMaterial(string name, Color color, float metallic = 0)

@@ -1,0 +1,1 @@
+PASS: real pointer down/drag/up; short swipe ignored; stronger-enemy failure; retry; 12 attacks; power reaches 2717; real sword-arm swings and trails; bounded impact VFX; painted background; defeated rooms disappear; hero returns home; all towers collapse and advance; stage-clear overlay; local saves.

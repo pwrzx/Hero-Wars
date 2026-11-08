@@ -9,10 +9,10 @@ namespace TowerTrials
 
         public static StageDefinition[] CreateStarterStages() => new[]
         {
-            new StageDefinition("THE VERDANT KEEP", 20,
-                new TowerDefinition(4, 31, 15),
-                new TowerDefinition(26, 83, 47),
-                new TowerDefinition(62, 350, 105)),
+            new StageDefinition("THE VERDANT KEEP", 3,
+                new TowerDefinition(2, 19, 5),
+                new TowerDefinition(16, 23, 37),
+                new TowerDefinition(62, 30, 95)),
             new StageDefinition("THE HOLLOW CITADEL", 28,
                 new TowerDefinition(9, 48, 18),
                 new TowerDefinition(41, 140, 67),

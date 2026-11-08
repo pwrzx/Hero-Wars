@@ -1,0 +1,1 @@
+PASS: 37417 assertions; 26 real attacks; all six three-room kill orders; eight-floor bottom-up collapse; real gravity and supporting collisions; no recovery snaps; crown/room compaction; surviving enemies at hero height; facing; input lock; target rims and swipe positions; partial-save reloads; next-tower advance. Original campaign and player save restored.

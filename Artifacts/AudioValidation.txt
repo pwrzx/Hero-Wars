@@ -1,0 +1,5 @@
+Synth_Swing: 0.19s, peak 0.198
+Synth_Hit: 0.19s, peak 0.469
+Synth_Power: 0.33s, peak 0.310
+Synth_Collapse: 0.55s, peak 0.404
+Synth_Failure: 0.19s, peak 0.265

@@ -1,0 +1,61 @@
+{
+  "fontsAndOverflow": "PASS",
+  "fiveCharacterPowerSize": 44.0,
+  "Complete": true,
+  "texts": [
+    {
+      "name": "Number",
+      "font": "TT_Bold",
+      "text": "646",
+      "size": 44.0
+    },
+    {
+      "name": "GameTitle",
+      "font": "TT_Display",
+      "text": "Tower Trials",
+      "size": 58.0
+    },
+    {
+      "name": "StageTitle",
+      "font": "TT_Body",
+      "text": "STAGE 02  /  THE HOLLOW CITADEL",
+      "size": 30.0
+    },
+    {
+      "name": "Label",
+      "font": "TT_Bold",
+      "text": "Retry",
+      "size": 36.0
+    },
+    {
+      "name": "Gesture",
+      "font": "TT_Bold",
+      "text": "Swipe toward a room",
+      "size": 40.0
+    },
+    {
+      "name": "Hint",
+      "font": "TT_Body",
+      "text": "Defeat weaker foes. Take their power.",
+      "size": 32.0
+    },
+    {
+      "name": "ResultTitle",
+      "font": "TT_Display",
+      "text": "Stage cleared",
+      "size": 64.0
+    },
+    {
+      "name": "ResultDetail",
+      "font": "TT_Body",
+      "text": "Every tower has fallen.\nFinal power: 646",
+      "size": 34.0
+    },
+    {
+      "name": "Label",
+      "font": "TT_Bold",
+      "text": "Next stage",
+      "size": 36.0
+    }
+  ]
+}

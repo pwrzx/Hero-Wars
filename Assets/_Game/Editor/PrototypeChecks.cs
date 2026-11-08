@@ -16,23 +16,28 @@ public static class PrototypeChecks
     public static string VerifyRules()
     {
         assertions = 0;
-        StageDefinition[] stages = CampaignConfig.CreateStarterStages();
+        var campaign = AssetDatabase.LoadAssetAtPath<CampaignConfig>("Assets/_Game/Data/StarterCampaign.asset");
+        if (campaign == null) throw new InvalidOperationException("The saved starter campaign is missing.");
+        StageDefinition[] stages = campaign.stages;
         foreach (StageDefinition stage in stages)
         {
             stage.Validate();
             Explore(stage, new StageRun(stage));
         }
-        var run = new StageRun(stages[0]);
+        // Fixed rule fixture stays independent of editable balancing numbers.
+        var fixture = new StageDefinition("Combat fixture", 20,
+            new TowerDefinition(4, 31, 15), new TowerDefinition(26, 83, 47), new TowerDefinition(62, 350, 105));
+        var run = new StageRun(fixture);
         Check(run.Attack(0, 0) == AttackOutcome.Defeated && run.Power == 24, "20 + 4 must become 24");
         Check(run.Attack(0, 0) == AttackOutcome.Invalid && run.Power == 24, "Duplicate attack cannot award power twice");
         Check(run.Attack(1, 0) == AttackOutcome.Invalid, "Queued towers cannot be attacked");
         Check(run.Attack(0, 1) == AttackOutcome.Lost && run.Power == 24, "Stronger enemy defeats hero without granting power");
         Check(run.Attack(0, 2) == AttackOutcome.Invalid, "Cannot attack after losing");
-        Check(StageRun.TryRestore(stages[0], run.Save(0), out var lost) && lost.Failed && lost.Power == 24, "Failed run restores");
-        Check(!StageRun.TryRestore(stages[0], new RunSave { clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
-        Check(!StageRun.TryRestore(stages[0], new RunSave { clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
-        Check(!StageRun.TryRestore(stages[0], new RunSave { version = 22, clearedMasks = new[] { 0, 0, 0 } }, out _), "Unknown save version is rejected");
-        Check(!StageRun.TryRestore(stages[0], new RunSave { clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
+        Check(StageRun.TryRestore(fixture, run.Save(0), out var lost) && lost.Failed && lost.Power == 24, "Failed run restores");
+        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 22, clearedMasks = new[] { 0, 0, 0 } }, out _), "Unknown save version is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
         ExpectInvalid(new StageDefinition("Tie after a kill", 20, new TowerDefinition(4, 24)));
         ExpectInvalid(new StageDefinition("Blocked stage", 20, new TowerDefinition(21, 30)));
         ExpectInvalid(new StageDefinition("Repeated powers", 20, new TowerDefinition(4, 4)));
@@ -93,13 +98,25 @@ public static class PrototypeChecks
     private static bool checkedFailure;
     private static bool checkedShortGesture;
     private static Transform attackedRoom;
+    private static long expectedFinalPower;
+    private static int failureRoom;
 
     public static string StartPlaytest()
     {
         if (!EditorApplication.isPlaying) throw new InvalidOperationException("Enter Play mode first.");
+        Directory.CreateDirectory("Artifacts");
+        File.WriteAllText("Artifacts/Playtest.txt", "RUNNING: pointer, animation and combat feedback playtest.");
         playGame = UnityEngine.Object.FindAnyObjectByType<TowerGameController>();
         if (playGame == null || playGame.Run == null) throw new InvalidOperationException("Game has not started.");
         playGame.RestartStage();
+        attackedRoom = null;
+        expectedFinalPower = playGame.Run.Definition.startingPower;
+        foreach (TowerDefinition tower in playGame.Run.Definition.towers)
+            foreach (long power in tower.enemies) expectedFinalPower = checked(expectedFinalPower + power);
+        failureRoom = -1;
+        for (int r = 0; r < playGame.Run.Definition.towers[0].enemies.Length; r++)
+            if (playGame.Run.Definition.towers[0].enemies[r] > playGame.Run.Power) { failureRoom = r; break; }
+        if (failureRoom < 0) throw new InvalidOperationException("This playtest requires one stronger enemy in the first tower.");
         swipeCount = 0; checkedFailure = false; checkedShortGesture = false;
         playDeadline = EditorApplication.timeSinceStartup + 60;
         EditorApplication.update -= TickPlaytest;
@@ -129,7 +146,7 @@ public static class PrototypeChecks
             }
             if (!checkedFailure)
             {
-                if (!playGame.Run.Failed) { SendPointerSwipe(1); return; }
+                if (!playGame.Run.Failed) { SendPointerSwipe(failureRoom); return; }
                 Check(playGame.Run.Power == playGame.Run.Definition.startingPower, "Failure grants no power");
                 playGame.Continue();
                 Check(!playGame.Run.Failed, "Retry returns to a playable state");
@@ -138,11 +155,17 @@ public static class PrototypeChecks
             if (playGame.Run.Complete)
             {
                 Check(playGame.transform.Find("Presentation/EnemyTower_1") == null, "Cleared tower disappears");
-                Check(playGame.Run.Power == 743, "Stage 1 final power is 743");
-                Check(UnityEngine.Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length == 1, "One EventSystem");
+                Check(playGame.Run.Power == expectedFinalPower, "Final power matches the edited campaign");
+                Check(playGame.Feedback.ImpactCount == swipeCount, "Exactly one impact per successful attack");
+                Check(playGame.Feedback.SlashCount == swipeCount, "Exactly one sword slash per successful attack");
+                Check(playGame.Feedback.ActivePulseCount <= 24 && playGame.Feedback.ParticleCount <= 160, "Combat effects stay within their mobile budgets");
+                var motion = playGame.transform.Find("Presentation/Knight").GetComponent<CharacterMotion>();
+                Check(motion.HasWeaponRig && motion.SwingCount == swipeCount, "Sword arm swings once per attack");
+                Check(playGame.GetComponentInChildren<GameBackdrop>() != null, "Painted background is present");
+                Check(UnityEngine.Object.FindObjectsByType<EventSystem>().Length == 1, "One EventSystem");
                 Directory.CreateDirectory("Artifacts");
                 File.WriteAllText("Artifacts/Playtest.txt", "PASS: real pointer down/drag/up; short swipe ignored; stronger-enemy failure; retry; " +
-                    swipeCount + " attacks; power reaches 743; defeated rooms disappear; hero returns home; all three towers collapse and advance; stage-clear overlay; local saves.");
+                    swipeCount + " attacks; power reaches " + expectedFinalPower + "; real sword-arm swings and trails; bounded impact VFX; painted background; defeated rooms disappear; hero returns home; all towers collapse and advance; stage-clear overlay; local saves.");
                 Debug.Log("POINTER_PLAYTEST_PASS");
                 EditorApplication.update -= TickPlaytest;
                 return;
