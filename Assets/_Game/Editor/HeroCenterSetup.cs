@@ -38,6 +38,7 @@ public static class HeroCenterSetup
         catalog.background = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Art/Backgrounds/AncientChasm.png");
         catalog.weaponMaterial = PrepareWeaponMaterial();
         catalog.cloakMaterial = PrepareCloakMaterial();
+        catalog.armedAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Pack_Heros/Animations/Fire/Fire_AC.controller");
         catalog.equipment = new[]
         {
             Item("skin.nature", "Grove Warden", "The first chapter of your legend.", EquipmentSlot.Skin, ItemRarity.Common, HeroRoot + "Hero_Nature.prefab", 10, true),
@@ -62,6 +63,7 @@ public static class HeroCenterSetup
         foreach (HeroEquipment item in catalog.equipment)
         {
             if (item.prefab == null) throw new InvalidOperationException("Missing asset for " + item.id);
+            item.gripPoint = DefaultGripPoint(item.id);
             item.icon = BakeIcon(item.id, item.prefab, item.slot == EquipmentSlot.Skin, item.cloak ? catalog.cloakMaterial : item.slot == EquipmentSlot.Skin ? null : catalog.weaponMaterial, null, item.cloak);
         }
         catalog.chests = new[]
@@ -83,6 +85,27 @@ public static class HeroCenterSetup
             prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path), power = power, starter = starter, cloak = cloak };
     private static HeroChest Chest(string id, string title, ItemRarity rarity, int price, bool gems, int[] weights)
         => new HeroChest { id = id, title = title, rarity = rarity, price = price, costsGems = gems, weights = weights };
+
+    // The imported pack's origins are near the guard/head; the actual grasp is lower on the handle.
+    public static Vector3 DefaultGripPoint(string id)
+    {
+        switch (id)
+        {
+            case "weapon.sword1": return new Vector3(0, -0.065f, 0);
+            case "weapon.sword2": return new Vector3(0, -0.08f, 0);
+            case "weapon.sword3": return new Vector3(0, -0.06f, 0);
+            case "weapon.axe1": return new Vector3(0, -0.08f, 0);
+            case "weapon.axe2": return new Vector3(0, -0.12f, 0);
+            case "weapon.axe3": return new Vector3(0, -0.09f, 0);
+            case "weapon.mace1": return new Vector3(0, -0.13f, 0);
+            case "weapon.mace2": return new Vector3(0, -0.10f, 0);
+            case "weapon.mace3": return new Vector3(0, -0.14f, 0);
+            case "armor.oak": return new Vector3(0, 0, -0.18f);
+            case "armor.sentinel": return new Vector3(0, 0, -0.20f);
+            case "armor.kingsguard": return new Vector3(0, 0, -0.21f);
+            default: return Vector3.zero;
+        }
+    }
 
     private static void PrepareAtlas(string path)
     {

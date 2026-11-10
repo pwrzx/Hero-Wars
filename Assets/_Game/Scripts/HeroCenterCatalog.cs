@@ -17,6 +17,8 @@ namespace TowerTrials
         public GameObject prefab;
         public Sprite icon;
         public int power;
+        [Tooltip("Point inside the handle, in the equipment prefab's local coordinates.")]
+        public Vector3 gripPoint;
     }
 
     [Serializable]
@@ -54,6 +56,7 @@ namespace TowerTrials
         public Sprite primaryButton, secondaryButton, slotFrame;
         public Texture2D background;
         public Material weaponMaterial, cloakMaterial;
+        public RuntimeAnimatorController armedAnimatorController;
 
         public HeroEquipment Find(string id) => Array.Find(equipment, item => item.id == id);
         public static HeroCenterCatalog Load() => Resources.Load<HeroCenterCatalog>("HeroCenter/Catalog");

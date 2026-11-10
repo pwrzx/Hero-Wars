@@ -60,7 +60,81 @@ public static class HeroCenterChecks
         Check(!restored.TryClaimDaily(day.AddHours(2)) && restored.gold == gold && restored.gems == gems, "Daily reward cannot be claimed twice");
         Check(restored.TryClaimDaily(day.AddDays(1)), "Next UTC day resets the gift");
         Check(UnityEditor.EditorBuildSettings.scenes[0].path == HeroCenterSetup.ScenePath, "Hero Center is the startup scene");
-        string report = "PASS: " + assertions + " Hero Center assertions.\nCatalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.\n";
+        VerifyEquipment(catalog, Check);
+        string report = "PASS: " + assertions + " Hero Center assertions.\nCatalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.\nAll four hero rigs, nine weapons and three shields at portrait/gameplay sizes with rotated parents; closed idle grips; handle alignment through idle, running, attack, jump and death animations.\n";
         Directory.CreateDirectory("Artifacts"); File.WriteAllText("Artifacts/HeroCenterValidation.txt", report); Debug.Log(report);
+    }
+
+    private static void VerifyEquipment(HeroCenterCatalog catalog, Action<bool, string> check)
+    {
+        check(catalog.armedAnimatorController != null, "Armed animation controller exists");
+        HeroEquipment[] weapons = catalog.equipment.Where(item => item.slot == EquipmentSlot.Weapon).ToArray();
+        HeroEquipment[] shields = catalog.equipment.Where(item => item.slot == EquipmentSlot.Armor && !item.cloak).ToArray();
+        var owner = new GameObject("EquipmentCheckRoot");
+        owner.transform.position = new Vector3(1000, 0, 0);
+        try
+        {
+            foreach (HeroEquipment skin in catalog.equipment.Where(item => item.slot == EquipmentSlot.Skin))
+                foreach (float height in new[] { 1.65f, 3.15f })
+                    for (int i = 0; i < weapons.Length; i++)
+                    {
+                        HeroEquipment weapon = weapons[i], shield = shields[i % shields.Length];
+                        // An equipment length must be independent of both the avatar pose and its parent's yaw.
+                        owner.transform.rotation = Quaternion.Euler(0, i % 2 == 0 ? 0 : 137, 0);
+                        var profile = new HeroProfile { skin = skin.id, weapon = weapon.id, armor = shield.id };
+                        GameObject hero = HeroAppearance.Create(catalog, profile, owner.transform, height);
+                        try
+                        {
+                            var bones = hero.GetComponentsInChildren<Transform>(true).GroupBy(t => t.name).ToDictionary(group => group.Key, group => group.First());
+                            Animator animator = hero.GetComponentInChildren<Animator>();
+                            string context = skin.id + " / " + weapon.id + " / " + shield.id + " / " + height;
+                            check(animator.isHuman && animator.runtimeAnimatorController == catalog.armedAnimatorController, "Armed humanoid animations: " + context);
+                            foreach (HeroEquipment item in new[] { weapon, shield })
+                            {
+                                Transform equipment = bones["Equipped_" + item.id];
+                                string side = item.slot == EquipmentSlot.Weapon ? "R" : "L";
+                                check(equipment.parent == bones["CC_Base_" + side + "_Hand"], "Equipment is parented to the correct hand: " + context);
+                                float length = equipment.TransformVector(Vector3.up * HeroAppearance.LocalBoundsOf(equipment.gameObject).size.y).magnitude;
+                                check(Mathf.Abs(length / height - (item.slot == EquipmentSlot.Weapon ? 0.43f : 0.29f)) < 0.005f, "Equipment keeps its intended size: " + context);
+                                if (item.slot == EquipmentSlot.Armor)
+                                {
+                                    check(equipment.Find("HandGrip") != null, "Shield has a rear handle: " + context);
+                                    float rear = equipment.GetComponent<Renderer>().localBounds.min.z;
+                                    float clearance = equipment.TransformVector(Vector3.forward * (rear - item.gripPoint.z)).magnitude;
+                                    check(clearance > height * 0.025f, "Shield leaves room for fingers and gauntlets: " + context);
+                                }
+                            }
+                            foreach (AnimationClip clip in animator.runtimeAnimatorController.animationClips.Distinct())
+                                foreach (float fraction in new[] { 0.1f, 0.5f, 0.9f })
+                                {
+                                    clip.SampleAnimation(animator.gameObject, clip.length * fraction);
+                                    foreach (HeroEquipment item in new[] { weapon, shield })
+                                    {
+                                        string side = item.slot == EquipmentSlot.Weapon ? "R" : "L";
+                                        Transform hand = bones["CC_Base_" + side + "_Hand"];
+                                        Transform knuckle = bones["CC_Base_" + side + "_Mid1"];
+                                        Vector3 anchor = bones["Equipped_" + item.id].TransformPoint(item.gripPoint);
+                                        float palmLength = Vector3.Distance(hand.position, knuckle.position);
+                                        float alongPalm = Vector3.Dot(anchor - hand.position, hand.up);
+                                        check(alongPalm > palmLength * 0.6f && alongPalm < palmLength * 1.1f &&
+                                            Vector3.Distance(anchor, knuckle.position) < palmLength * 0.6f,
+                                            "Handle stays inside the palm during " + clip.name + ": " + context);
+                                    }
+                                    if (clip.name.Contains("Idle"))
+                                    {
+                                        foreach (string side in new[] { "R", "L" })
+                                            check(Vector3.Dot(bones["CC_Base_" + side + "_Hand"].up, bones["CC_Base_" + side + "_Index1"].up) < 0.65f,
+                                                "Equipped idle closes the " + side + " hand: " + context);
+                                        check(Vector3.Dot(bones["Equipped_" + shield.id].forward, hero.transform.forward) > 0.65f,
+                                            "Shield faces outward in the ready pose: " + context);
+                                    }
+                                }
+                            check(!hero.GetComponentsInChildren<Renderer>().Any(r => r.name.IndexOf("wand", StringComparison.OrdinalIgnoreCase) >= 0 || r.name.IndexOf("sword_fire", StringComparison.OrdinalIgnoreCase) >= 0),
+                                "Original weapon stays hidden: " + context);
+                        }
+                        finally { UnityEngine.Object.DestroyImmediate(hero); }
+                    }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(owner); }
     }
 }

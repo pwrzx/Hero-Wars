@@ -23,6 +23,7 @@ MonoBehaviour:
     prefab: {fileID: 1517480223028523657, guid: 3cea2669bc779f241917351acb11c350, type: 3}
     icon: {fileID: 21300000, guid: 1b0a5a155d6c1ec47a6144069aab05f4, type: 3}
     power: 10
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: skin.ice
     title: Frost Sentinel
     description: An icebound hero. Unlock in chests.
@@ -33,6 +34,7 @@ MonoBehaviour:
     prefab: {fileID: 2584641278423287903, guid: 580cc6b7383632745add7a1ee6560042, type: 3}
     icon: {fileID: 21300000, guid: cb5f4113bed766841b9be923828a15fe, type: 3}
     power: 35
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: skin.rock
     title: Stone Guardian
     description: A mountain's strength. Unlock in chests.
@@ -43,6 +45,7 @@ MonoBehaviour:
     prefab: {fileID: 751762560753533063, guid: 94666c70f395f7a4fb367b07c0557373, type: 3}
     icon: {fileID: 21300000, guid: 742d15b89b2ec4e4a903d7fc6f10cc13, type: 3}
     power: 35
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: skin.fire
     title: Ember Sovereign
     description: A legend forged in fire.
@@ -53,6 +56,7 @@ MonoBehaviour:
     prefab: {fileID: 3426146483806157543, guid: 810eccd8d23152e4e873f7c1a46a53bc, type: 3}
     icon: {fileID: 21300000, guid: 6d3d7b0626e8e0a40bba38616ba6c088, type: 3}
     power: 100
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: armor.oak
     title: Oakguard Shield
     description: A trusted shield for a new hero.
@@ -63,6 +67,7 @@ MonoBehaviour:
     prefab: {fileID: 8225021697395699067, guid: b01612824a7543c4abc3e7e781eb9c8b, type: 3}
     icon: {fileID: 21300000, guid: 1b06970838cebf24993d49a5326971c7, type: 3}
     power: 8
+    gripPoint: {x: 0, y: 0, z: -0.18}
   - id: armor.sentinel
     title: Sentinel Shield
     description: Steel protection for the journey.
@@ -73,6 +78,7 @@ MonoBehaviour:
     prefab: {fileID: 4293756316760274988, guid: 7c56232770c0aaf49a44306bb91e6fc0, type: 3}
     icon: {fileID: 21300000, guid: 9417c8f95b9d92d4c83937cd9284e6f7, type: 3}
     power: 25
+    gripPoint: {x: 0, y: 0, z: -0.2}
   - id: armor.kingsguard
     title: Kingsguard Shield
     description: Protection worthy of a sovereign.
@@ -83,6 +89,7 @@ MonoBehaviour:
     prefab: {fileID: 854600269195413799, guid: e20592e05f934f043898d41917f3b7ea, type: 3}
     icon: {fileID: 21300000, guid: 37f5e8be15d66f345a0844a3e04420aa, type: 3}
     power: 80
+    gripPoint: {x: 0, y: 0, z: -0.21}
   - id: armor.grove
     title: Grove Mantle
     description: A cloak from the ancient forest.
@@ -93,6 +100,7 @@ MonoBehaviour:
     prefab: {fileID: 919132149155446097, guid: f382d52810fe9634096b3754c739595f, type: 3}
     icon: {fileID: 21300000, guid: 131a3f02e9eb12147a01f0897fd268dc, type: 3}
     power: 12
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: armor.stone
     title: Stoneweave Cloak
     description: A mantle woven for a guardian.
@@ -103,6 +111,7 @@ MonoBehaviour:
     prefab: {fileID: 919132149155446097, guid: 197c66b24bb5db64f8da69ea153ed38c, type: 3}
     icon: {fileID: 21300000, guid: 892a3605f1daa324191427bc0bdfb47c, type: 3}
     power: 50
+    gripPoint: {x: 0, y: 0, z: 0}
   - id: weapon.sword1
     title: Wayfarer Sword
     description: A reliable blade. Ready for adventure.
@@ -113,6 +122,7 @@ MonoBehaviour:
     prefab: {fileID: 7765039258374207770, guid: 430cae0e0724fe34bb278ca3c4611b19, type: 3}
     icon: {fileID: 21300000, guid: 50efe627b95dc3643b15c5f9f0860bb3, type: 3}
     power: 12
+    gripPoint: {x: 0, y: -0.065, z: 0}
   - id: weapon.axe1
     title: Ironwood Axe
     description: A sturdy, honest edge.
@@ -123,6 +133,7 @@ MonoBehaviour:
     prefab: {fileID: 7051320939021718015, guid: 023c1833a449bbb48aed1b8122a15754, type: 3}
     icon: {fileID: 21300000, guid: 0f5987924969d794e8435dc88c8420fd, type: 3}
     power: 14
+    gripPoint: {x: 0, y: -0.08, z: 0}
   - id: weapon.mace1
     title: Traveler Mace
     description: A simple answer to a tough enemy.
@@ -133,6 +144,7 @@ MonoBehaviour:
     prefab: {fileID: 4708944413874578667, guid: 35bb3f29741616446bd7ecd9b72e7f7b, type: 3}
     icon: {fileID: 21300000, guid: 0ee005024aa57d349be3f13c28d1b21e, type: 3}
     power: 14
+    gripPoint: {x: 0, y: -0.13, z: 0}
   - id: weapon.sword2
     title: Azure Edge
     description: A blade carried by seasoned heroes.
@@ -143,6 +155,7 @@ MonoBehaviour:
     prefab: {fileID: 9001204379432806937, guid: 02d3cef92aca19b45bf47659d43fec71, type: 3}
     icon: {fileID: 21300000, guid: c316cde13ee88c14f8f070b6ffb1649d, type: 3}
     power: 30
+    gripPoint: {x: 0, y: -0.08, z: 0}
   - id: weapon.axe2
     title: Sentinel Axe
     description: Forged to defend the realm.
@@ -153,6 +166,7 @@ MonoBehaviour:
     prefab: {fileID: 8354486415229417176, guid: bd3716c4c6e723444bfa5e300a057390, type: 3}
     icon: {fileID: 21300000, guid: a9959c0389b2c0e4f937cb9c9bdc8aa5, type: 3}
     power: 32
+    gripPoint: {x: 0, y: -0.12, z: 0}
   - id: weapon.mace2
     title: Wardbreaker
     description: Steel forged for the front line.
@@ -163,6 +177,7 @@ MonoBehaviour:
     prefab: {fileID: 5998868466834009048, guid: 32e33390d35dd254d95d3a9ea794d017, type: 3}
     icon: {fileID: 21300000, guid: a95bf8751c5e323449efb54769b35cfa, type: 3}
     power: 32
+    gripPoint: {x: 0, y: -0.1, z: 0}
   - id: weapon.axe3
     title: Dusk Cleaver
     description: An edge from a forgotten age.
@@ -173,6 +188,7 @@ MonoBehaviour:
     prefab: {fileID: 5397652822341350709, guid: 72fe5fc707cc4ab4094c21385547978a, type: 3}
     icon: {fileID: 21300000, guid: 649eb7861e4ba6b4d91b3f4f2355fb95, type: 3}
     power: 60
+    gripPoint: {x: 0, y: -0.09, z: 0}
   - id: weapon.mace3
     title: Stormcrusher
     description: Heavy enough to shake a kingdom.
@@ -183,6 +199,7 @@ MonoBehaviour:
     prefab: {fileID: 2426587870412289090, guid: 67082484d14262448982f405cb502d73, type: 3}
     icon: {fileID: 21300000, guid: 9de36c3f93a484547b605e4dd9ab6b29, type: 3}
     power: 60
+    gripPoint: {x: 0, y: -0.14, z: 0}
   - id: weapon.sword3
     title: Crownfall
     description: A golden blade with a legendary past.
@@ -193,6 +210,7 @@ MonoBehaviour:
     prefab: {fileID: 3117197089752098888, guid: 088bed86c5758f549a96d81b11f72272, type: 3}
     icon: {fileID: 21300000, guid: 26aba99eeac998c4498e22b96a291898, type: 3}
     power: 100
+    gripPoint: {x: 0, y: -0.06, z: 0}
   chests:
   - id: chest.common
     title: Wayfarer Chest
@@ -235,6 +253,7 @@ MonoBehaviour:
   background: {fileID: 2800000, guid: a08421a7b6ffa30498a88a88aaff965a, type: 3}
   weaponMaterial: {fileID: 2100000, guid: cbaf1a56a8d80474fad389fa97c134fb, type: 2}
   cloakMaterial: {fileID: 2100000, guid: 92c6554d0ad1279499ef0636f59c067f, type: 2}
+  armedAnimatorController: {fileID: 9100000, guid: 1dad6eb831817764e8bc65de9255534c, type: 2}
 --- !u!213 &4996337273734059641
 Sprite:
   serializedVersion: 2
