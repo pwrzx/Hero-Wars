@@ -1,0 +1,1 @@
+PASS: 844 checks and 9 real pointer attacks. Pause/resume, background interruption, persistent settings, first-clear rewards, duplicate protection, next-stage unlock, 24-keep journey and stage selection. Original saves and settings restored.

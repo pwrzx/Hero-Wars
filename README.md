@@ -1,29 +1,33 @@
-# Tower Trials / Hero Wars Unity prototype
+# Hero Wars
 
-Unity version: **6000.6.0f1**, URP, Input System.
+A portrait, offline mobile tower puzzle game built with Unity **6000.6.0f1**, URP and the Input System.
 
-The new front end starts in `Assets/_Game/Scenes/HeroCenter.unity`: Hero Center, Customize and Shop, using the downloaded hero, weapon and mobile UI packs. It includes saved equipment and currencies, four rarity tiers, chest unlocks and an Adventure/Home round trip. See `Docs/HeroCenter.md` for the catalog, drop rates and validation commands.
+Swipe right toward a room with less power than your hero. Defeat its enemy, absorb that power, and find the winning route through each tower. Clear 24 keeps across four chapters, earn gold and gems, and unlock four hero skins, three shields and nine weapons. The heroes retain their original cloaks; cloaks are not standalone armor rewards.
 
-Open `Assets/_Game/Scenes/TowerPrototype.unity`, choose a **9:16 portrait** Game view, and press **Play**. Swipe right toward the room you want to attack. In the Editor, click and drag right using the mouse. Start with weaker enemies and build power before attacking stronger ones. Retry resets the current stage; clearing all towers unlocks the next authored stage. The current run is saved locally.
+The game includes a journey selector, first-clear rewards with duplicate protection, first-launch instructions, pause/resume, background interruption handling, independent music/sound preferences, optional haptics, reduced motion, battery saver, local backup saves, daily gifts, randomized earned-currency chests, and saved customization. There are no accounts, ads or in-app purchases.
 
-The editable Blender file is `ArtSource/Blender/HeroWars_AssetLibrary.blend`. The five exported starter models are already imported into Unity. See `Docs/DevelopmentPlan.md` for the confirmed design and remaining work.
+## Play
 
-Validation: use **Tower Trials > Verify Game Rules** for an exhaustive traversal of the authored stages plus save and invalid-data checks. The Editor-only `PrototypeChecks.StartPlaytest()` verifies the pointer/combat/animation flow during Play mode. Reports are written to `Artifacts`.
+Open `Assets/_Game/Scenes/HeroCenter.unity` and enter Play mode with a portrait Game view. Choose Adventure to read the rules and continue your run. Journey selects unlocked keeps. Home returns from gameplay; Pause provides settings and restart. Mouse drag works in the Editor, and the same pointer flow handles mobile touch.
 
-The initial verification passed 3,186 rule assertions, the pointer/animation playtest, a fresh-session save restore, and the Next Stage button. The asset GUID/script audit reports zero errors and warnings. Physical-phone performance and Android/iOS builds have not been tested.
+The authored opening stages live in `Assets/_Game/Data/StarterCampaign.asset`. Later stages are deterministically generated and validated by `CampaignConfig`; all current 24 stages are saved in the asset. The cosmetic catalog is `Assets/_Game/Resources/HeroCenter/Catalog.asset`.
 
-The template's default volume profile contained orphaned subassets with missing scripts. They were removed through Unity's asset API; its original file is preserved in `Artifacts/BaselineBackup`.
+## Mobile release
 
-The Unity Pipeline package enables live local Editor operations through the Unity CLI. No cloud services, account system, ads, purchases, or procedural stage generator are included yet.
+Android is configured for ARM64/IL2CPP, minimum API 26 and target API 36. iOS uses IL2CPP/Metal, iOS 15+, iPhone and iPad. Both ship only the two game scenes. Mobile textures use ASTC overrides and retain the source dimensions.
 
-Combat now includes a procedural shoulder/weapon rig, breathing and cape motion, jump anticipation and tucked legs, sword swings and trails, impact sparks, recoil and defeat poses, power wisps and rolling numbers, landing bursts, collapse effects, victory animation and short original synthesized sound cues. The generated Ancient Chasm painting is integrated behind the 3D scene.
+Use `Hero Wars > Release` for settings, Android test APK, Android store bundle and iOS Xcode export. Build outputs stay in the ignored `Builds` directory. Store signing, the publisher's final identity/contact details, native device testing and store submission remain publisher steps; a local Unity build does not establish store approval.
 
-On **TowerGame**, **Feedback Intensity** adjusts camera shake (zero turns shake off), **Feedback Volume** controls combat sound, and **Attack Duration** controls the jump timing. Combat VFX use a 24-effect pool plus at most 160 burst particles and 32 ambient motes. These starter meshes use procedural pivots rather than a humanoid skeleton.
+- [Release/build instructions](Docs/MobileRelease.md)
+- [Final readiness report](Docs/ReleaseReadiness.md)
+- [Store listing copy](Docs/StoreListing.md)
+- [Privacy policy text](Docs/Privacy.md)
+- [Asset credits](Docs/Credits.md)
+- [Hero Center/catalog notes](Docs/HeroCenter.md)
+- [UI style](Docs/UIStyle.md)
 
-The rules check reads `StarterCampaign.asset`, so it follows the balancing values used by the game. `CreateStarterStages()` remains the factory default for newly created campaign assets. Existing custom edits to those defaults have been preserved.
+## Validation
 
-Tower floors and crowns now fall under gravity when a defeated room is removed. Compound colliders on the room floors and walls support the falling stack, while each surviving enemy, power badge, and target rim follows its room. The lowest survivor reaches the hero's level, and saved runs rebuild with the same compacted layout. The hero and goblins turn slightly toward each other. **Tower Fall Gravity** and **Character Facing Angle** on TowerGame adjust the fall weight and facing.
+`Tower Trials > Verify Game Rules` explores all reachable winning states and save round trips across the campaign. Hero Center checks cover cosmetic references, rarity pools, exact transactions, save repair, native cloaks, animation timing and equipment grips. Play-mode checks exercise real pointer events and scene transitions. Tower physics checks cover all three-room orders and an eight-floor collapse. The release commands also verify rewards, backup recovery, pause/settings, background interruption and progression.
 
-In Play mode, **Tower Trials > Verify Tower Physics (Play Mode)** checks all six three-room attack orders and an eight-floor bottom-up collapse through real attacks and collision contacts, including partial-save reloads and next-tower advancement. It uses temporary campaign fixtures and restores the player's campaign and save. The report is `Artifacts/TowerPhysicsValidation.txt`.
-
-The in-game UI uses bundled Alegreya SC and Alegreya Sans fonts, with static TextMesh Pro atlases, tabular power numerals, and drawn ink-and-brass buttons. Retry and result actions have larger touch targets, distinct pointer/keyboard states and pressed feedback. Font sources and licenses are in `Assets/_Game/Art/Fonts`; **Tower Trials > Prepare UI Fonts** recreates missing font assets. See `Docs/UIStyle.md` for the UI conventions.
+Validation reports and screenshots are in `Artifacts`. The checks isolate and restore the player's saves. Source models, textures and fonts are retained; gameplay has no runtime download dependency.

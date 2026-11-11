@@ -19,7 +19,7 @@ namespace TowerTrials
         }
 
         public void Play(CombatSound sound)
-        { if (source != null && clips[(int)sound] != null) source.PlayOneShot(clips[(int)sound]); }
+        { if (GamePreferences.Sound && source != null && clips[(int)sound] != null) source.PlayOneShot(clips[(int)sound]); }
 
         private static AudioClip Create(CombatSound sound)
         {

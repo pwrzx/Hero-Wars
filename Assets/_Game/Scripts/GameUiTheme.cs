@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 
@@ -11,6 +12,8 @@ namespace TowerTrials
         public static readonly Color Brass = new Color32(196, 163, 103, 255);
         public static readonly Color Parchment = new Color32(240, 232, 208, 255);
         private static TMP_FontAsset display, body, bold;
+        public static string Number(long value) => value.ToString("N0", CultureInfo.InvariantCulture);
+        public static float PowerBadgeWidth(long value) => Mathf.Clamp(24 + Number(value).Length * 22, 136, 320);
 
         public static TMP_FontAsset Font(GameTextRole role)
         {

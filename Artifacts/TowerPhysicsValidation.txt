@@ -1,3 +1,1 @@
-FAIL: System.Exception: TOWER PHYSICS CHECK FAILED: Every segment lands on a real collider without recovery
-  at TowerPhysicsChecks.Check (System.Boolean condition, System.String message) [0x00020] in D:\Unity\Projects\Hero Wars\Hero Wars\Assets\_Game\Editor\TowerPhysicsChecks.cs:202
-  at TowerPhysicsChecks.Tick () [0x0006d] in D:\Unity\Projects\Hero Wars\Hero Wars\Assets\_Game\Editor\TowerPhysicsChecks.cs:83
+PASS: 26918 assertions; 26 real attacks; all six three-room kill orders; eight-floor bottom-up collapse; real gravity and supporting collisions; no recovery snaps; crown/room compaction; surviving enemies at hero height; facing; input lock; target rims and swipe positions; partial-save reloads; next-tower advance. Original campaign and player save restored.

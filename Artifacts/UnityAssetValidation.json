@@ -1,0 +1,11 @@
+{
+  "tool": "check_unity_project",
+  "schema": 1,
+  "root": "D:/Unity/Projects/Hero Wars/Hero Wars",
+  "files_checked": 562,
+  "error_count": 0,
+  "warning_count": 0,
+  "errors": [],
+  "warnings": [],
+  "truncated": false
+}

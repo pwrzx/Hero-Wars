@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "result": "Succeeded",
+  "platform": "Android",
+  "outputPath": "D:/Unity/Projects/Hero Wars/Hero Wars/Builds/Android/HeroWars-QA.apk",
+  "buildTimeMs": 25467,
+  "totalErrors": 0,
+  "totalWarnings": 0,
+  "errors": [],
+  "warnings": []
+}

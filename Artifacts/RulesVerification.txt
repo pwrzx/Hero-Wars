@@ -1,1 +1,1 @@
-PASS: 3186 assertions; all reachable winning orders across 3 stages; save restore; ties; invalid stages; overflow.
+PASS: 3777 assertions; all reachable winning states across 24 stages; save restore; ties; invalid stages; overflow.

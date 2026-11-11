@@ -1,0 +1,2 @@
+PASS: bundletool 1.17.2 validate completed with exit code 0.
+PASS: store preparation AAB contains no JAR signature entries; publisher upload-key signing is required.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace TowerTrials
@@ -12,14 +13,25 @@ namespace TowerTrials
         public string skin = "skin.nature", armor = "armor.oak", weapon = "weapon.sword1";
         public string dailyClaimUtc = "";
         public List<string> owned = new List<string>();
+        public List<int> completedStages = new List<int>();
+        public int progressionVersion;
+        public int HighestUnlockedStage => Mathf.Min(CampaignConfig.StageCount - 1,
+            completedStages.Count == 0 ? 0 : completedStages[completedStages.Count - 1] + 1);
 
         public static HeroProfile Load(HeroCenterCatalog catalog)
         {
-            HeroProfile profile = null;
-            try { profile = JsonUtility.FromJson<HeroProfile>(PlayerPrefs.GetString(SaveKey, "")); }
-            catch (ArgumentException) { /* Invalid data is repaired below without affecting the campaign save. */ }
+            HeroProfile profile = GameSave.Read<HeroProfile>(SaveKey, value => value.version == 1);
             if (profile == null || profile.version != 1) profile = new HeroProfile();
             profile.Repair(catalog);
+            if (profile.progressionVersion == 0)
+            {
+                RunSave previous = GameSave.Read<RunSave>("TowerTrials.Run.v1", value => value.version == 1);
+                if (previous != null)
+                    for (int i = 0; i < Mathf.Clamp(previous.stageIndex, 0, CampaignConfig.StageCount - 1); i++)
+                        if (!profile.completedStages.Contains(i)) profile.completedStages.Add(i);
+                profile.completedStages.Sort();
+                profile.progressionVersion = 1;
+            }
             return profile;
         }
 
@@ -36,6 +48,21 @@ namespace TowerTrials
             skin = ValidSelection(catalog, skin, EquipmentSlot.Skin);
             armor = ValidSelection(catalog, armor, EquipmentSlot.Armor);
             weapon = ValidSelection(catalog, weapon, EquipmentSlot.Weapon);
+            if (completedStages == null) completedStages = new List<int>();
+            var stages = new HashSet<int>();
+            completedStages.RemoveAll(index => index < 0 || index >= CampaignConfig.StageCount || !stages.Add(index));
+            completedStages.Sort();
+            level = Mathf.Clamp(1 + completedStages.Count / 3, 1, 999);
+        }
+
+        public bool ClaimStageReward(int stageIndex)
+        {
+            if (stageIndex < 0 || stageIndex >= CampaignConfig.StageCount || completedStages.Contains(stageIndex)) return false;
+            completedStages.Add(stageIndex); completedStages.Sort();
+            gold = (int)Math.Min(1000000000L, (long)gold + CampaignConfig.GoldReward(stageIndex));
+            gems = (int)Math.Min(1000000000L, (long)gems + CampaignConfig.GemReward(stageIndex));
+            level = 1 + completedStages.Count / 3;
+            return true;
         }
 
         private string ValidSelection(HeroCenterCatalog catalog, string id, EquipmentSlot slot)
@@ -90,11 +117,11 @@ namespace TowerTrials
             return true;
         }
 
-        public bool CanClaimDaily(DateTime utcNow) => dailyClaimUtc != utcNow.ToString("yyyy-MM-dd");
+        public bool CanClaimDaily(DateTime utcNow) => dailyClaimUtc != utcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         public bool TryClaimDaily(DateTime utcNow)
         {
             if (!CanClaimDaily(utcNow)) return false;
-            dailyClaimUtc = utcNow.ToString("yyyy-MM-dd");
+            dailyClaimUtc = utcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
             gold = (int)Math.Min(1000000000L, (long)gold + 300);
             gems = (int)Math.Min(1000000000L, (long)gems + 15);
             return true;
@@ -110,8 +137,7 @@ namespace TowerTrials
 
         public void Save()
         {
-            PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(this));
-            PlayerPrefs.Save();
+            GameSave.Write(SaveKey, this);
         }
     }
 }

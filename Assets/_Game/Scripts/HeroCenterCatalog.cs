@@ -36,11 +36,13 @@ namespace TowerTrials
             get
             {
                 string text = "";
+                int entries = 0;
                 for (int i = 0; i < weights.Length; i++)
                 {
                     if (weights[i] == 0) continue;
-                    if (text.Length > 0) text += "  /  ";
+                    if (text.Length > 0) text += entries % 2 == 0 ? "\n" : "  /  ";
                     text += weights[i] + "% " + (ItemRarity)i;
+                    entries++;
                 }
                 return text;
             }

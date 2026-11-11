@@ -140,7 +140,7 @@ namespace TowerTrials
         {
             if (view == null) return;
             shakeTime -= Time.unscaledDeltaTime;
-            float amount = shakeTime > 0 ? shake * Mathf.Clamp01(shakeTime / 0.18f) : 0;
+            float amount = !GamePreferences.ReducedMotion && shakeTime > 0 ? shake * Mathf.Clamp01(shakeTime / 0.18f) : 0;
             float clock = Time.unscaledTime;
             view.transform.position = cameraRest + new Vector3(Mathf.Sin(clock * 113) * amount, Mathf.Cos(clock * 89) * amount * 0.65f, 0);
         }

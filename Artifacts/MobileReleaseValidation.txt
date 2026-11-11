@@ -1,0 +1,1 @@
+PASS: 137 release assertions. All 24 keeps validate; sequential unlocks, exact first-clear rewards, repeated-completion protection, progression serialization, primary-save recovery, shield-only equipment, scene list and mobile identifiers.

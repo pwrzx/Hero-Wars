@@ -66,6 +66,13 @@ namespace TowerTrials
             DoStateTransition(currentSelectionState, true);
         }
 
+        public void SetPauseIcon()
+        {
+            if (icon == null) return;
+            icon.Configure(GameUiShape.Shape.Pause, Color.white);
+            DoStateTransition(currentSelectionState, true);
+        }
+
         private void FitContents()
         {
             if (label == null || icon == null) return;

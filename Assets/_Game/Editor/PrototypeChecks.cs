@@ -9,6 +9,7 @@ using UnityEngine.EventSystems;
 public static class PrototypeChecks
 {
     private static int assertions;
+    private static readonly HashSet<string> exploredStates = new HashSet<string>();
 
     [MenuItem("Tower Trials/Verify Game Rules")]
     public static void VerifyRulesMenu() => VerifyRules();
@@ -21,6 +22,7 @@ public static class PrototypeChecks
         StageDefinition[] stages = campaign.stages;
         foreach (StageDefinition stage in stages)
         {
+            exploredStates.Clear();
             stage.Validate();
             Explore(stage, new StageRun(stage));
         }
@@ -46,7 +48,7 @@ public static class PrototypeChecks
         try { new StageDefinition("Overflow", long.MaxValue - 1, new TowerDefinition(3)).Validate(); }
         catch (OverflowException) { overflow = true; }
         Check(overflow, "Power overflow must be rejected");
-        string report = "PASS: " + assertions + " assertions; all reachable winning orders across 3 stages; save restore; ties; invalid stages; overflow.";
+        string report = "PASS: " + assertions + " assertions; all reachable winning states across " + stages.Length + " stages; save restore; ties; invalid stages; overflow.";
         Directory.CreateDirectory("Artifacts");
         File.WriteAllText("Artifacts/RulesVerification.txt", report);
         Debug.Log(report);
@@ -55,6 +57,7 @@ public static class PrototypeChecks
 
     private static void Explore(StageDefinition stage, StageRun run)
     {
+        if (!exploredStates.Add(run.TowerIndex + ":" + string.Join(",", run.Save(0).clearedMasks))) return;
         Check(StageRun.TryRestore(stage, run.Save(0), out var restored) && restored.Power == run.Power &&
             restored.TowerIndex == run.TowerIndex && restored.Complete == run.Complete, "Every reachable state must round-trip");
         // Exercise Unity's actual JSON serializer too, not just an in-memory snapshot.

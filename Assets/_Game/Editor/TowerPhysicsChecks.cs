@@ -23,6 +23,8 @@ public static class TowerPhysicsChecks
     private static TowerGameController game;
     private static CampaignConfig originalCampaign, fixture;
     private static string originalSave;
+    private static string originalBackup;
+    private static bool hadBackup;
     private static bool hadSave, waiting, sawFall, sawLanding;
     private static int scenario, move, assertions, attacks;
     private static int observedSlashes, observedImpacts;
@@ -41,6 +43,8 @@ public static class TowerPhysicsChecks
         originalCampaign = (CampaignConfig)new SerializedObject(game).FindProperty("campaign").objectReferenceValue;
         hadSave = PlayerPrefs.HasKey(SaveKey);
         originalSave = PlayerPrefs.GetString(SaveKey, "");
+        hadBackup = PlayerPrefs.HasKey(SaveKey + ".backup");
+        originalBackup = PlayerPrefs.GetString(SaveKey + ".backup", "");
         fixture = ScriptableObject.CreateInstance<CampaignConfig>();
         scenario = move = assertions = attacks = 0;
         waiting = false;
@@ -226,6 +230,8 @@ public static class TowerPhysicsChecks
                 game.Configure(originalCampaign, game.GameCamera);
                 if (hadSave) PlayerPrefs.SetString(SaveKey, originalSave);
                 else PlayerPrefs.DeleteKey(SaveKey);
+                if (hadBackup) PlayerPrefs.SetString(SaveKey + ".backup", originalBackup);
+                else PlayerPrefs.DeleteKey(SaveKey + ".backup");
                 PlayerPrefs.Save();
                 ReloadSavedRun();
             }

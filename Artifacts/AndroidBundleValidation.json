@@ -1,0 +1,52 @@
+{
+  "package": "HeroWars-unsigned.aab",
+  "bytes": 36172729,
+  "sha256": "93c818b15ae6aa2e7113915bfa80f0e0efa29d73efac0e74961b242769d186aa",
+  "libraries": [
+    {
+      "name": "base/lib/arm64-v8a/lib_burst_generated.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "base/lib/arm64-v8a/libc++_shared.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "base/lib/arm64-v8a/libgame.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "base/lib/arm64-v8a/libil2cpp.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "base/lib/arm64-v8a/libmain.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "base/lib/arm64-v8a/libunity.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    }
+  ],
+  "pipeline_runtime_server_present": false,
+  "errors": [],
+  "passed": true
+}

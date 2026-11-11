@@ -27,6 +27,7 @@ namespace TowerTrials
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
         private Transform presentation, hero;
         private RectTransform canvasRect, safeArea, resultPanel;
+        private RectTransform pausePanel, pauseCard;
         private TMP_Text stageLabel, powerLabel, hint, resultTitle, resultDetail;
         private UnityEngine.UI.Button continueButton;
         private TMP_Text continueLabel;
@@ -41,10 +42,12 @@ namespace TowerTrials
         private readonly Dictionary<string, InputActionReference> inputReferences = new Dictionary<string, InputActionReference>();
         private int stageIndex;
         private bool busy, preview;
+        private bool paused, rewardGranted;
         private Rect lastSafeArea;
         private Vector2 lastScreen;
         public StageRun Run { get; private set; }
         public bool Busy => busy;
+        public bool Paused => paused;
         public int StageIndex => stageIndex;
         public Camera GameCamera => gameCamera;
         public CombatFeedback Feedback => feedback;
@@ -73,20 +76,28 @@ namespace TowerTrials
         private void Start()
         {
             preview = false;
-            Application.targetFrameRate = 60;
-            Screen.orientation = ScreenOrientation.Portrait;
+            GamePreferences.Apply();
             if (campaign == null || campaign.stages == null || campaign.stages.Length == 0)
                 throw new InvalidOperationException("Assign a campaign to TowerGameController.");
-            RunSave saved = null;
-            try { saved = JsonUtility.FromJson<RunSave>(PlayerPrefs.GetString(SaveKey, "")); }
-            catch (ArgumentException) { /* An interrupted or obsolete save starts a fresh run. */ }
+            RunSave saved = GameSave.Read<RunSave>(SaveKey, value => value.version == 1);
+            HeroProfile profile = HeroProfile.Load(HeroCenterCatalog.Load());
+            if (PlayerPrefs.HasKey(CampaignConfig.SelectedStageKey))
+            {
+                int selected = Mathf.Clamp(PlayerPrefs.GetInt(CampaignConfig.SelectedStageKey), 0, profile.HighestUnlockedStage);
+                PlayerPrefs.DeleteKey(CampaignConfig.SelectedStageKey);
+                saved = new StageRun(campaign.stages[selected]).Save(selected);
+            }
+            else if (saved == null)
+                saved = new StageRun(campaign.stages[Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1)])
+                    .Save(Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1));
             stageIndex = saved == null ? 0 : Mathf.Clamp(saved.stageIndex, 0, campaign.stages.Length - 1);
+            rewardGranted = false;
             if (saved == null || saved.stageIndex != stageIndex ||
                 !StageRun.TryRestore(campaign.stages[stageIndex], saved, out var restored))
                 Run = new StageRun(campaign.stages[stageIndex]);
             else Run = restored;
-            RebuildPresentation();
             SaveProgress();
+            RebuildPresentation();
         }
 
         public void BuildPreview()
@@ -104,6 +115,15 @@ namespace TowerTrials
             UpdateLayout();
         }
 
+        private void Update()
+        {
+            if (!preview && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                if (Run != null && (Run.Complete || Run.Failed)) HeroCenterController.ReturnToHeroCenter();
+                else SetPaused(!paused);
+            }
+        }
+
         private void UpdateLayout()
         {
             Vector2 dimensions = new Vector2(Screen.width, Screen.height);
@@ -111,8 +131,9 @@ namespace TowerTrials
             {
                 lastScreen = dimensions;
                 lastSafeArea = Screen.safeArea;
-                safeArea.anchorMin = lastSafeArea.position / dimensions;
-                safeArea.anchorMax = (lastSafeArea.position + lastSafeArea.size) / dimensions;
+                GameUi.ConfigureScaler(safeArea.GetComponentInParent<UnityEngine.UI.CanvasScaler>());
+                Canvas.ForceUpdateCanvases();
+                GameUi.FitSafeArea(safeArea);
                 gameCamera.orthographicSize = Mathf.Max(6.4f, 3.9f / gameCamera.aspect);
                 Canvas.ForceUpdateCanvases();
             }
@@ -246,9 +267,7 @@ namespace TowerTrials
             canvasGo.transform.SetParent(presentation, false);
             canvasGo.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.GetComponent<UnityEngine.UI.CanvasScaler>();
-            scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080, 1920);
-            scaler.matchWidthOrHeight = 0.5f;
+            GameUi.ConfigureScaler(scaler);
             canvasRect = canvasGo.GetComponent<RectTransform>();
             var labels = Panel("PowerBadges", canvasRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, Color.clear);
             powerLabel = AddBadge(hero, new Vector3(0, 2.18f, 0), new Color(0.09f, 0.39f, 0.69f), labels, Run.Power);
@@ -267,26 +286,28 @@ namespace TowerTrials
             input.gameObject.AddComponent<SwipeAttackInput>().controller = this;
 
             var header = Panel("Header", safeArea, new Vector2(0, 1), Vector2.one,
-                new Vector2(32, -248), new Vector2(-32, -28), Ink);
+                new Vector2(32, -296), new Vector2(-32, -28), Ink);
             AddBorder(header);
-            var title = Text("GameTitle", header, "Tower Trials", 58, Paper, GameTextRole.Display);
-            Place(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -10), new Vector2(660, 100));
+            var title = Text("GameTitle", header, "Hero Wars", 54, Paper, GameTextRole.Display);
+            Place(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -12), new Vector2(430, 144));
             stageLabel = Text("StageTitle", header, "", 30, Gold);
-            Place(stageLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -104), new Vector2(920, 46));
-            retryButton = Button("Retry", header, "Retry", RestartStage, false);
-            Place(retryButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -20), new Vector2(224, 104));
+            Place(stageLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -176), new Vector2(920, 60));
+            stageLabel.enableAutoSizing = true; stageLabel.fontSizeMin = 25; stageLabel.fontSizeMax = 30;
+            retryButton = Button("Pause", header, "Pause", () => SetPaused(true), false);
+            ((GameButton)retryButton).SetPauseIcon();
+            Place(retryButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -12), new Vector2(224, 144));
             homeButton = Button("HeroCenterReturn", header, "Home", () =>
             {
                 if (!busy) HeroCenterController.ReturnToHeroCenter();
             }, false);
             ((GameButton)homeButton).SetRestartIcon(false);
-            Place(homeButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -130), new Vector2(224, 48));
+            Place(homeButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-264, -12), new Vector2(224, 144));
             int towerCount = Run.Definition.towers.Length;
             for (int t = 0; t < towerCount; t++)
             {
                 var bar = Panel("TowerProgress_" + t, header, new Vector2((float)t / towerCount, 0),
-                    new Vector2((float)(t + 1) / towerCount, 0), new Vector2(16, 29),
-                    new Vector2(-16, 37), new Color(0.17f, 0.29f, 0.32f));
+                    new Vector2((float)(t + 1) / towerCount, 0), new Vector2(16, 9),
+                    new Vector2(-16, 17), new Color(0.17f, 0.29f, 0.32f));
                 progress.Add(bar.GetComponent<UnityEngine.UI.Image>());
             }
 
@@ -316,6 +337,11 @@ namespace TowerTrials
             continueLabel = continueButton.GetComponentInChildren<TMP_Text>();
             Place(continueButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 56), new Vector2(640, 112));
             resultPanel.gameObject.SetActive(false);
+            pausePanel = Panel("PauseOverlay", safeArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0.015f, 0.03f, 0.045f, 0.94f));
+            pausePanel.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+            pauseCard = Panel("PauseCard", pausePanel, new Vector2(0.06f, 0.15f), new Vector2(0.94f, 0.85f), Vector2.zero, Vector2.zero, Ink);
+            AddBorder(pauseCard);
+            pausePanel.gameObject.SetActive(false);
 
             if (!preview)
             {
@@ -343,6 +369,7 @@ namespace TowerTrials
 
         private void OnDestroy()
         {
+            if (paused) Time.timeScale = 1;
             foreach (InputActionReference reference in inputReferences.Values)
                 if (reference != null) { if (Application.isPlaying) Destroy(reference); else DestroyImmediate(reference); }
             inputReferences.Clear();
@@ -350,13 +377,13 @@ namespace TowerTrials
 
         public void PreviewSwipe(Vector2 start, Vector2 end)
         {
-            if (busy || Run.Failed || Run.Complete) return;
+            if (paused || busy || Run == null || Run.Failed || Run.Complete) return;
             SelectRoom(FindRoom(end));
         }
 
         public bool SubmitSwipe(Vector2 start, Vector2 end)
         {
-            if (busy || Run == null || Run.Failed || Run.Complete) return false;
+            if (paused || busy || Run == null || Run.Failed || Run.Complete) return false;
             float threshold = swipeThreshold * Screen.width / 1080f;
             Vector2 delta = end - start;
             if (delta.sqrMagnitude < threshold * threshold || delta.x < threshold * 0.5f)
@@ -399,7 +426,7 @@ namespace TowerTrials
             if (room >= 0)
             {
                 long enemy = Run.Definition.towers[Run.TowerIndex].enemies[room];
-                hint.text = "Enemy " + enemy.ToString("N0") + (Run.Power > enemy ? ": ready to strike" : ": too strong");
+                hint.text = "Enemy " + GameUiTheme.Number(enemy) + (Run.Power > enemy ? ": ready to strike" : ": too strong");
                 hint.color = Run.Power > enemy ? new Color(0.55f, 1, 0.76f) : new Color(1, 0.55f, 0.45f);
             }
         }
@@ -425,6 +452,7 @@ namespace TowerTrials
             AttackOutcome outcome = Run.Attack(index, room);
             SaveProgress(); // Save the resolved transaction, before cosmetic animations can be interrupted.
             feedback.Impact(enemy.position, outcome != AttackOutcome.Lost);
+            GamePreferences.Impact();
             if (outcome == AttackOutcome.Lost)
             {
                 combatAudio.Play(CombatSound.Failure);
@@ -461,7 +489,7 @@ namespace TowerTrials
             enemy.gameObject.SetActive(false);
             tower.rooms[room].gameObject.SetActive(false);
             Coroutine settling = StartCoroutine(SettleTower(index));
-            hint.text = "+" + gained.ToString("N0") + " POWER";
+            hint.text = "+" + GameUiTheme.Number(gained) + " POWER";
             hint.color = Gold;
             yield return MoveHero(destination, home, attackDuration, 0.45f);
             feedback.Landing(home);
@@ -521,21 +549,22 @@ namespace TowerTrials
 
         private IEnumerator CountPower(long from, long to)
         {
+            SizeHeroBadge(to);
             RectTransform badge = powerLabel.transform.parent as RectTransform;
             for (float time = 0; time < 0.38f; time += Time.deltaTime)
             {
                 float t = Mathf.Clamp01(time / 0.38f);
-                powerLabel.text = (from + (long)((to - from) * (double)Mathf.SmoothStep(0, 1, t))).ToString("N0");
+                powerLabel.text = GameUiTheme.Number(from + (long)((to - from) * (double)Mathf.SmoothStep(0, 1, t)));
                 badge.localScale = Vector3.one * (1 + Mathf.Sin(t * Mathf.PI) * 0.18f);
                 yield return null;
             }
-            powerLabel.text = to.ToString("N0");
+            powerLabel.text = GameUiTheme.Number(to);
             badge.localScale = Vector3.one;
         }
 
         private IEnumerator FloatingPower(long amount, Vector3 position)
         {
-            TMP_Text label = Text("PowerGain", canvasRect, "+" + amount.ToString("N0"), 54, Gold, GameTextRole.Number);
+            TMP_Text label = Text("PowerGain", canvasRect, "+" + GameUiTheme.Number(amount), 54, Gold, GameTextRole.Number);
             label.alignment = TextAlignmentOptions.Center;
             var shadow = label.gameObject.AddComponent<UnityEngine.UI.Shadow>();
             shadow.effectColor = Ink;
@@ -602,7 +631,9 @@ namespace TowerTrials
         public void RestartStage()
         {
             if (busy) return;
+            SetPaused(false);
             StopAllCoroutines();
+            rewardGranted = false;
             Run = new StageRun(campaign.stages[stageIndex]);
             RebuildPresentation();
             SaveProgress();
@@ -618,8 +649,9 @@ namespace TowerTrials
         private void RefreshHud()
         {
             stageLabel.text = "STAGE " + (stageIndex + 1).ToString("00") + "  /  " + Run.Definition.title;
-            powerLabel.text = Run.Power.ToString("N0");
-            hint.text = "Defeat weaker foes. Take their power.";
+            powerLabel.text = GameUiTheme.Number(Run.Power);
+            SizeHeroBadge(Run.Power);
+            hint.text = "Your power: " + GameUiTheme.Number(Run.Power) + ". Choose a lower red number.";
             hint.color = Paper;
             for (int i = 0; i < progress.Count; i++)
                 progress[i].color = i < Run.TowerIndex ? Gold : i == Run.TowerIndex ? new Color(0.24f, 0.69f, 0.64f) : new Color(0.17f, 0.29f, 0.32f);
@@ -631,7 +663,8 @@ namespace TowerTrials
             resultPanel.gameObject.SetActive(true);
             resultTitle.text = complete ? "Stage cleared" : "Hero defeated";
             resultDetail.text = complete
-                ? "Every tower has fallen.\nFinal power: " + Run.Power.ToString("N0")
+                ? (rewardGranted ? "+" + CampaignConfig.GoldReward(stageIndex) + " gold   /   +" + CampaignConfig.GemReward(stageIndex) + " gems\n" : "First-clear reward already saved.\n") +
+                    (stageIndex == campaign.stages.Length - 1 ? "Journey complete. Every keep is yours!" : "Next keep unlocked. Final power: " + GameUiTheme.Number(Run.Power))
                 : "That enemy was too powerful.\nTry a different order of attacks.";
             continueLabel.text = complete ? (stageIndex == campaign.stages.Length - 1 ? "Play again" : "Next stage") : "Try again";
             ((GameButton)continueButton).SetRestartIcon(!complete || stageIndex == campaign.stages.Length - 1);
@@ -653,7 +686,7 @@ namespace TowerTrials
             for (float time = 0; time < 0.23f; time += Time.unscaledDeltaTime)
             {
                 float t = 1 - Mathf.Pow(1 - Mathf.Clamp01(time / 0.23f), 3);
-                card.localScale = Vector3.one * Mathf.Lerp(0.9f, 1, t);
+                card.localScale = GamePreferences.ReducedMotion ? Vector3.one : Vector3.one * Mathf.Lerp(0.9f, 1, t);
                 yield return null;
             }
             card.localScale = Vector3.one;
@@ -662,34 +695,99 @@ namespace TowerTrials
         private void SetBusy(bool value)
         {
             busy = value;
-            if (retryButton != null) retryButton.interactable = !value;
+            if (retryButton != null) retryButton.interactable = true;
             if (homeButton != null) homeButton.interactable = !value;
         }
 
         private void SaveProgress()
         {
             if (preview || Run == null) return;
-            PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(Run.Save(stageIndex)));
-            PlayerPrefs.Save();
+            GameSave.Write(SaveKey, Run.Save(stageIndex));
+            if (Run.Complete)
+            {
+                HeroProfile profile = HeroProfile.Load(HeroCenterCatalog.Load());
+                if (profile.ClaimStageReward(stageIndex)) { profile.Save(); rewardGranted = true; }
+            }
         }
-        private void OnApplicationPause(bool paused) { if (paused) SaveProgress(); }
+        private void OnApplicationPause(bool background)
+        {
+            if (!background || preview || Run == null) return;
+            SaveProgress();
+            if (!Run.Complete && !Run.Failed) SetPaused(true);
+        }
+        private void OnApplicationQuit() => SaveProgress();
+
+        public void SetPaused(bool value)
+        {
+            if (pausePanel == null) return;
+            paused = value; Time.timeScale = value ? 0 : 1;
+            pausePanel.gameObject.SetActive(value);
+            if (value) BuildPauseMenu();
+        }
+
+        private void ClearPauseCard()
+        {
+            for (int i = pauseCard.childCount - 1; i >= 0; i--)
+            { GameObject child = pauseCard.GetChild(i).gameObject; child.SetActive(false); Destroy(child); }
+        }
+
+        private void BuildPauseMenu()
+        {
+            ClearPauseCard();
+            GameUi.Label("PauseTitle", pauseCard, "Take a breath", 64, Paper, new Vector2(0.06f, 0.81f), new Vector2(0.94f, 0.96f), GameTextRole.Display);
+            GameUi.Label("PauseStage", pauseCard, CampaignConfig.Chapter(stageIndex) + " / Keep " + (stageIndex + 1), 32, GameUi.Muted,
+                new Vector2(0.06f, 0.73f), new Vector2(0.94f, 0.82f));
+            PauseAction("Resume", "Resume", () => SetPaused(false), 0.58f, true);
+            PauseAction("RestartFromPause", "Restart keep", () => { busy = false; RestartStage(); }, 0.44f);
+            PauseAction("GameplaySettings", "Settings", BuildGameplaySettings, 0.30f);
+            PauseAction("PauseHome", "Hero Center", () => { SaveProgress(); SetPaused(false); HeroCenterController.ReturnToHeroCenter(); }, 0.16f);
+        }
+
+        private void PauseAction(string name, string caption, UnityEngine.Events.UnityAction action, float bottom, bool primary = false)
+        {
+            var button = GameUi.Button(name, pauseCard, caption, action, primary, 36);
+            GameUi.Fit((RectTransform)button.transform, new Vector2(0.12f, bottom), new Vector2(0.88f, bottom + 0.11f));
+        }
+
+        private void BuildGameplaySettings()
+        {
+            ClearPauseCard();
+            GameUi.Settings(pauseCard, BuildPauseMenu, () => GameplayInformation("How to play", GameUi.HelpText),
+                () => GameplayInformation("About & privacy", GameUi.AboutText));
+        }
+
+        private void GameplayInformation(string title, string copy)
+        {
+            ClearPauseCard();
+            GameUi.Label("InformationTitle", pauseCard, title, 60, Paper, new Vector2(0.06f, 0.85f), new Vector2(0.94f, 0.97f), GameTextRole.Display);
+            GameUi.Label("InformationText", pauseCard, copy, 34, GameUi.Muted, new Vector2(0.09f, 0.23f), new Vector2(0.91f, 0.84f));
+            PauseAction("InformationBack", "Back", BuildGameplaySettings, 0.06f, true);
+        }
 
         private TMP_Text AddBadge(Transform target, Vector3 offset, Color color, Transform parent, long power)
         {
+            float width = GameUiTheme.PowerBadgeWidth(power);
             var badge = Panel("Power_" + power, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(-68, -32), new Vector2(68, 32), Color.clear);
+                new Vector2(-width * 0.5f, -32), new Vector2(width * 0.5f, 32), Color.clear);
             UiShape("Rim", badge, GameUiShape.Shape.Plate, new Color(0.77f, 0.7f, 0.5f), 5);
             GameUiShape face = UiShape("Face", badge, GameUiShape.Shape.Plate, color, 4);
             face.rectTransform.offsetMin = Vector2.one * 2;
             face.rectTransform.offsetMax = -Vector2.one * 2;
-            TMP_Text label = Text("Number", badge, power.ToString("N0"), 44, Color.white, GameTextRole.Number);
+            TMP_Text label = Text("Number", badge, GameUiTheme.Number(power), 44, Color.white, GameTextRole.Number);
             label.alignment = TextAlignmentOptions.Center;
             label.enableAutoSizing = true;
             label.margin = new Vector4(10, 0, 10, 0);
-            label.fontSizeMin = 34;
+            label.fontSizeMin = 20;
             label.fontSizeMax = 44;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
             badges.Add(new Badge { target = target, rect = badge, offset = offset });
             return label;
+        }
+
+        private void SizeHeroBadge(long power)
+        {
+            if (powerLabel != null)
+                ((RectTransform)powerLabel.transform.parent).SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, GameUiTheme.PowerBadgeWidth(power));
         }
 
         private static void TintTower(TowerView tower, float brightness)
@@ -798,6 +896,7 @@ namespace TowerTrials
             Place(icon.rectTransform, Vector2.one * 0.5f, Vector2.one * 0.5f,
                 new Vector2(-labelWidth * 0.5f - 8, 0), new Vector2(40, 40));
             var button = rect.gameObject.AddComponent<GameButton>();
+            button.onClick.AddListener(GameAudio.Click);
             button.onClick.AddListener(callback);
             button.Configure(primary, rim, face, icon, text, content);
             return button;

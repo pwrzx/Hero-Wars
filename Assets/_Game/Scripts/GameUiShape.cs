@@ -6,7 +6,7 @@ namespace TowerTrials
     [RequireComponent(typeof(CanvasRenderer))]
     public sealed class GameUiShape : UnityEngine.UI.MaskableGraphic
     {
-        public enum Shape { Plate, Restart, Forward }
+        public enum Shape { Plate, Restart, Forward, Pause }
         [SerializeField] private Shape shape;
         [SerializeField] private float corner = 8;
 
@@ -41,6 +41,12 @@ namespace TowerTrials
             float size = Mathf.Min(rect.width, rect.height);
             float stroke = size * 0.075f;
             Vector2 center = rect.center;
+            if (shape == Shape.Pause)
+            {
+                Segment(mesh, center + new Vector2(-size * 0.18f, -size * 0.3f), center + new Vector2(-size * 0.18f, size * 0.3f), stroke * 1.6f);
+                Segment(mesh, center + new Vector2(size * 0.18f, -size * 0.3f), center + new Vector2(size * 0.18f, size * 0.3f), stroke * 1.6f);
+                return;
+            }
             if (shape == Shape.Restart)
             {
                 const int steps = 28;
