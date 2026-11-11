@@ -6,6 +6,8 @@ Swipe right toward a room with less power than your hero. Defeat its enemy, abso
 
 The game includes a journey selector, first-clear rewards with duplicate protection, first-launch instructions, pause/resume, background interruption handling, independent music/sound preferences, optional haptics, reduced motion, battery saver, local backup saves, daily gifts, randomized earned-currency chests, and saved customization. There are no accounts, ads or in-app purchases.
 
+The defeat screen reserves a rewarded-ad continue option beside Retry. It stays unavailable until an ad provider is connected; a confirmed reward resumes the same checkpoint. See [Rewarded continue setup](Docs/RewardedContinue.md).
+
 ## Play
 
 Open `Assets/_Game/Scenes/HeroCenter.unity` and enter Play mode with a portrait Game view. Choose Adventure to read the rules and continue your run. Journey selects unlocked keeps. Home returns from gameplay; Pause provides settings and restart. Mouse drag works in the Editor, and the same pointer flow handles mobile touch.

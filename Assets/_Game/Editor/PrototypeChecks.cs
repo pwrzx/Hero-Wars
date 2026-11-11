@@ -36,6 +36,14 @@ public static class PrototypeChecks
         Check(run.Attack(0, 1) == AttackOutcome.Lost && run.Power == 24, "Stronger enemy defeats hero without granting power");
         Check(run.Attack(0, 2) == AttackOutcome.Invalid, "Cannot attack after losing");
         Check(StageRun.TryRestore(fixture, run.Save(0), out var lost) && lost.Failed && lost.Power == 24, "Failed run restores");
+        Check(lost.TryRevive() && !lost.Failed && lost.Power == 24 && lost.IsDefeated(0, 0), "Revive retains power and cleared rooms");
+        Check(!lost.TryRevive() && lost.Power == 24, "A second revive cannot alter a live run");
+        Check(StageRun.TryRestore(fixture, JsonUtility.FromJson<RunSave>(JsonUtility.ToJson(lost.Save(0))), out var revived) &&
+            !revived.Failed && revived.Power == 24 && revived.IsDefeated(0, 0), "Revived checkpoint survives JSON save/reload");
+        Check(revived.Attack(0, 2) == AttackOutcome.Defeated && revived.Power == 39, "Revived hero can choose a different legal attack");
+        var finished = new StageRun(new StageDefinition("Completed revive fixture", 20, new TowerDefinition(4)));
+        finished.Attack(0, 0);
+        Check(!finished.TryRevive() && finished.Complete && finished.Power == 24, "Completed stages cannot be revived");
         Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
         Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
         Check(!StageRun.TryRestore(fixture, new RunSave { version = 22, clearedMasks = new[] { 0, 0, 0 } }, out _), "Unknown save version is rejected");

@@ -28,7 +28,13 @@ namespace TowerTrials
         private Transform presentation, hero;
         private RectTransform canvasRect, safeArea, resultPanel;
         private RectTransform pausePanel, pauseCard;
+        private RectTransform resultCard;
         private TMP_Text stageLabel, powerLabel, hint, resultTitle, resultDetail;
+        private TMP_Text reviveDetail, reviveStatus;
+        private GameButton reviveButton;
+        private RewardedContinueTicket reviveTicket;
+        private StageRun reviveRun;
+        private string reviveMessage;
         private UnityEngine.UI.Button continueButton;
         private TMP_Text continueLabel;
         private CharacterMotion heroMotion;
@@ -117,6 +123,7 @@ namespace TowerTrials
 
         private void Update()
         {
+            UpdateRewardedContinue();
             if (!preview && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 if (Run != null && (Run.Complete || Run.Failed)) HeroCenterController.ReturnToHeroCenter();
@@ -324,7 +331,7 @@ namespace TowerTrials
             resultPanel = Panel("ResultOverlay", safeArea, Vector2.zero, Vector2.one,
                 Vector2.zero, Vector2.zero, new Color(0.01f, 0.035f, 0.05f, 0.87f));
             resultPanel.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
-            var card = Panel("ResultCard", resultPanel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            var card = resultCard = Panel("ResultCard", resultPanel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(-450, -280), new Vector2(450, 280), Ink);
             AddBorder(card);
             resultTitle = Text("ResultTitle", card, "", 64, Gold, GameTextRole.Display);
@@ -336,6 +343,17 @@ namespace TowerTrials
             continueButton = Button("Continue", card, "", Continue, true);
             continueLabel = continueButton.GetComponentInChildren<TMP_Text>();
             Place(continueButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 56), new Vector2(640, 112));
+            reviveDetail = Text("ReviveBenefit", card, "Keep your power and cleared rooms.", 34, Paper);
+            reviveDetail.alignment = TextAlignmentOptions.Center;
+            Place(reviveDetail.rectTransform, Vector2.one * 0.5f, Vector2.one * 0.5f, new Vector2(0, 100), new Vector2(780, 84));
+            reviveButton = GameUi.Button("WatchAdContinue", card, "Watch ad & continue", RequestRewardedContinue, true, 38);
+            Place((RectTransform)reviveButton.transform, Vector2.one * 0.5f, Vector2.one * 0.5f, new Vector2(0, -18), new Vector2(740, 144));
+            reviveStatus = Text("ReviveStatus", card, "", 29, GameUi.Muted);
+            reviveStatus.alignment = TextAlignmentOptions.Center;
+            Place(reviveStatus.rectTransform, Vector2.one * 0.5f, Vector2.one * 0.5f, new Vector2(0, -128), new Vector2(780, 62));
+            reviveDetail.gameObject.SetActive(false);
+            reviveButton.gameObject.SetActive(false);
+            reviveStatus.gameObject.SetActive(false);
             resultPanel.gameObject.SetActive(false);
             pausePanel = Panel("PauseOverlay", safeArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0.015f, 0.03f, 0.045f, 0.94f));
             pausePanel.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
@@ -369,6 +387,7 @@ namespace TowerTrials
 
         private void OnDestroy()
         {
+            CancelRewardedContinue();
             if (paused) Time.timeScale = 1;
             foreach (InputActionReference reference in inputReferences.Values)
                 if (reference != null) { if (Application.isPlaying) Destroy(reference); else DestroyImmediate(reference); }
@@ -631,6 +650,7 @@ namespace TowerTrials
         public void RestartStage()
         {
             if (busy) return;
+            CancelRewardedContinue();
             SetPaused(false);
             StopAllCoroutines();
             rewardGranted = false;
@@ -660,14 +680,25 @@ namespace TowerTrials
         private void ShowResult()
         {
             bool complete = Run.Complete;
+            resultCard.sizeDelta = new Vector2(900, complete ? 560 : 820);
+            Place(resultDetail.rectTransform, Vector2.one * 0.5f, Vector2.one * 0.5f,
+                new Vector2(0, complete ? 10 : 200), new Vector2(780, complete ? 135 : 100));
+            Place((RectTransform)continueButton.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, 56), new Vector2(640, complete ? 112 : 144));
+            reviveDetail.gameObject.SetActive(!complete);
+            reviveButton.gameObject.SetActive(!complete);
+            reviveStatus.gameObject.SetActive(!complete);
             resultPanel.gameObject.SetActive(true);
             resultTitle.text = complete ? "Stage cleared" : "Hero defeated";
             resultDetail.text = complete
                 ? (rewardGranted ? "+" + CampaignConfig.GoldReward(stageIndex) + " gold   /   +" + CampaignConfig.GemReward(stageIndex) + " gems\n" : "First-clear reward already saved.\n") +
                     (stageIndex == campaign.stages.Length - 1 ? "Journey complete. Every keep is yours!" : "Next keep unlocked. Final power: " + GameUiTheme.Number(Run.Power))
-                : "That enemy was too powerful.\nTry a different order of attacks.";
-            continueLabel.text = complete ? (stageIndex == campaign.stages.Length - 1 ? "Play again" : "Next stage") : "Try again";
+                : "That enemy was too powerful.\nChoose how to continue.";
+            continueLabel.text = complete ? (stageIndex == campaign.stages.Length - 1 ? "Play again" : "Next stage") : "Retry";
+            ((GameButton)continueButton).SetPrimary(complete);
             ((GameButton)continueButton).SetRestartIcon(!complete || stageIndex == campaign.stages.Length - 1);
+            reviveMessage = null;
+            RefreshRewardedContinue();
             if (!preview)
             {
                 StartCoroutine(RevealResult());
@@ -678,6 +709,63 @@ namespace TowerTrials
                     StartCoroutine(PoseHero(CombatPose.Celebrate, 0.55f));
                 }
             }
+        }
+
+        public void RequestRewardedContinue()
+        {
+            if (preview || busy || Run == null || !Run.Failed || reviveTicket != null) return;
+            if (RewardedContinueAds.TryShow(out var ticket))
+            {
+                reviveTicket = ticket;
+                reviveRun = Run;
+                reviveMessage = null;
+            }
+            else reviveMessage = "No ad available right now. You can retry.";
+            RefreshRewardedContinue();
+        }
+
+        private void UpdateRewardedContinue()
+        {
+            if (reviveTicket != null && reviveTicket.Result != RewardedContinueResult.Pending)
+            {
+                RewardedContinueResult result = reviveTicket.Result;
+                StageRun expectedRun = reviveRun;
+                reviveTicket = null; reviveRun = null;
+                if (Run == expectedRun && Run.Failed)
+                {
+                    if (result == RewardedContinueResult.Rewarded && Run.TryRevive())
+                    {
+                        StopAllCoroutines();
+                        SetPaused(false);
+                        SaveProgress();
+                        RebuildPresentation();
+                        hint.text = "Back in the battle. Choose a weaker enemy.";
+                    }
+                    else reviveMessage = result == RewardedContinueResult.Skipped
+                        ? "Ad not finished. Try another ad or retry."
+                        : "Ad unavailable. You can try again or retry.";
+                }
+            }
+            if (Run != null && Run.Failed && resultPanel != null && resultPanel.gameObject.activeSelf)
+                RefreshRewardedContinue();
+        }
+
+        private void RefreshRewardedContinue()
+        {
+            if (reviveButton == null || Run == null || !Run.Failed) return;
+            bool waiting = reviveTicket != null;
+            bool available = !preview && !waiting && RewardedContinueAds.IsReady;
+            reviveButton.interactable = available;
+            var retry = (GameButton)continueButton;
+            if (retry.IsPrimary == available) retry.SetPrimary(!available);
+            reviveStatus.text = waiting ? "Waiting for the ad to finish..." : reviveMessage ??
+                (available ? "Finish the ad to continue your run." : "No ad available right now. You can retry.");
+        }
+
+        private void CancelRewardedContinue()
+        {
+            reviveTicket?.Cancel();
+            reviveTicket = null; reviveRun = null; reviveMessage = null;
         }
 
         private IEnumerator RevealResult()

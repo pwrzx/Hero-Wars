@@ -1,7 +1,7 @@
 {
   "package": "HeroWars-QA.apk",
-  "bytes": 36304427,
-  "sha256": "8275f4480fd0b926e93018224624335d43d96319ff7584efc82266999c96a5a9",
+  "bytes": 36306091,
+  "sha256": "063c990374f551467ca33c5fa26edbaeea1203ba9694d9a828d0e0337d552ff6",
   "libraries": [
     {
       "name": "lib/arm64-v8a/lib_burst_generated.so",

@@ -10,6 +10,7 @@ namespace TowerTrials
         [SerializeField] private RectTransform content;
         [SerializeField] private bool primary;
         private Vector2 contentTarget;
+        public bool IsPrimary => primary;
 
         public void Configure(bool isPrimary, GameUiShape border, GameUiShape face,
             GameUiShape actionIcon, TMP_Text actionLabel, RectTransform contents)
@@ -65,6 +66,9 @@ namespace TowerTrials
             FitContents();
             DoStateTransition(currentSelectionState, true);
         }
+
+        public void SetPrimary(bool value)
+        { Configure(value, rim, (GameUiShape)targetGraphic, icon, label, content); }
 
         public void SetPauseIcon()
         {

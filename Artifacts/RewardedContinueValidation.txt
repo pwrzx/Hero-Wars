@@ -1,0 +1,1 @@
+PASS: 16 rewarded-continue hook assertions. No-provider/unavailable states, single-show lock, skipped ads, worker-thread callbacks, duplicate results, cancellation and replaced-provider isolation. No ad SDK or network requests.

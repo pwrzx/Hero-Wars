@@ -60,6 +60,8 @@ public static class MobilePlayChecks
         try
         {
             Check(Application.isPlaying && EditorApplication.timeSinceStartup < deadline, "Mobile loop remains live within its deadline");
+            // Editor updates may run multiple times before a newly created menu renders.
+            if (Time.frameCount < pausedFrame + 2) return;
             switch (step)
             {
                 case 0:
@@ -127,6 +129,7 @@ public static class MobilePlayChecks
                     Check(game.StageIndex == 1 && !PlayerPrefs.HasKey(CampaignConfig.SelectedStageKey), "Journey selection is consumed exactly once");
                     Finish(null); break;
             }
+            pausedFrame = Time.frameCount;
         }
         catch (Exception error) { Finish(error); }
     }

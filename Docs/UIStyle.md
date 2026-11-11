@@ -9,3 +9,5 @@ Home and Pause are secondary dark plates with brass edges and 224x144 reference 
 UI plates and icons use native uGUI geometry. Font atlases are baked assets; typography and interface geometry work offline without downloaded images or fonts.
 
 Safe areas must be bounded by the current viewport, including transient stale simulator/orientation bounds. Tablet content is centered at a maximum 1120 reference units; the surrounding art fills the screen. Inventory has a visible scroll thumb and readable, autosizing chest odds. Power badges expand for exact values, using invariant number formatting instead of rounding combat-critical power. Reduced motion disables camera shake and scales on modal/reward reveals; battery saver targets 30 fps instead of 60.
+
+The defeat card reserves a 740×144 rewarded-continue button above a separate 640×144 Retry action. It explains that continuing retains power and cleared rooms. When no rewarded ad is ready, its button is disabled and Retry takes the primary brass style. The stage-clear card retains its existing size and progression action. No inline ad banner is displayed in the playfield.

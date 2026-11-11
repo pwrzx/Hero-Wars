@@ -90,6 +90,14 @@ namespace TowerTrials
 
         public bool IsDefeated(int tower, int room) => (clearedMasks[tower] & (1 << room)) != 0;
 
+        // A rewarded continue reverses only the defeat, never an enemy or power transaction.
+        public bool TryRevive()
+        {
+            if (!Failed || Complete) return false;
+            Failed = false;
+            return true;
+        }
+
         public AttackOutcome Attack(int tower, int room)
         {
             if (Failed || Complete || tower != TowerIndex || room < 0 ||
