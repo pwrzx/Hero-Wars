@@ -25,6 +25,9 @@ public static class TowerPhysicsChecks
     private static string originalSave;
     private static bool hadSave, waiting, sawFall, sawLanding;
     private static int scenario, move, assertions, attacks;
+    private static int observedSlashes, observedImpacts;
+    private static Transform attackingHero;
+    private static Animator attackAnimator;
     private static double deadline;
     private static Exception runtimeFailure;
     private static readonly Dictionary<TowerSegmentPhysics, int> landings = new Dictionary<TowerSegmentPhysics, int>();
@@ -83,6 +86,7 @@ public static class TowerPhysicsChecks
                 if (entry.Key.IsSettling)
                     Check(!game.SubmitSwipe(Vector2.zero, Vector2.right * Screen.width), "Input stays locked during the fall");
             }
+            if (waiting) VerifyCombatTiming();
             if (game.Busy) return;
             if (waiting)
             {
@@ -123,11 +127,36 @@ public static class TowerPhysicsChecks
             int room = Orders[scenario][move];
             Vector2 end = game.EnemyScreenPosition(room);
             Vector2 start = end - Vector2.right * Screen.width * 0.4f;
+            attackingHero = game.transform.Find("Presentation/Knight");
+            attackAnimator = attackingHero.GetComponentInChildren<Animator>();
+            observedSlashes = game.Feedback.SlashCount;
+            observedImpacts = game.Feedback.ImpactCount;
             Check(game.SubmitSwipe(start, end), "A swipe targets the original room ID at its current physical height");
             waiting = true;
             attacks++;
         }
         catch (Exception exception) { Finish(exception); }
+    }
+
+    private static void VerifyCombatTiming()
+    {
+        Check(attackAnimator != null, "Combat uses the equipped animated hero");
+        AnimatorStateInfo state = attackAnimator.GetCurrentAnimatorStateInfo(0);
+        if (game.Feedback.SlashCount > observedSlashes)
+        {
+            Check(state.IsName("Base Layer.Attack"), "The imported hero swings when the slash appears");
+            Check(attackingHero.position.x > 0, "The swing starts at the enemy tower");
+            observedSlashes = game.Feedback.SlashCount;
+        }
+        if (game.Feedback.ImpactCount > observedImpacts)
+        {
+            Check(state.IsName("Base Layer.Attack") && state.normalizedTime >= 0.35f && state.normalizedTime < 0.5f,
+                "Impact feedback coincides with the weapon's contact pose");
+            Check(attackingHero.position.x > 0, "The hero hits before returning home");
+            observedImpacts = game.Feedback.ImpactCount;
+        }
+        if (Mathf.Abs(attackingHero.position.x + 2.55f) < 0.01f && game.Feedback.ImpactCount > 0)
+            Check(!state.IsName("Base Layer.Attack"), "No attack animation replays at the home tower");
     }
 
     private static void VerifyStack()

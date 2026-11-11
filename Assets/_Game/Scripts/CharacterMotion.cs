@@ -18,9 +18,12 @@ namespace TowerTrials
         private CombatPose previousPose = CombatPose.Recover;
         private Renderer[] surfaces;
         private Animator importedAnimator;
-        private static readonly int ImportedAttack = Animator.StringToHash("Attack");
-        private static readonly int ImportedJump = Animator.StringToHash("Jump");
-        private static readonly int ImportedDeath = Animator.StringToHash("Death");
+        private float importedAnimatorSpeed;
+        private bool importedPoseActive;
+        private static readonly int ImportedIdle = Animator.StringToHash("Base Layer.Blend");
+        private static readonly int ImportedAttack = Animator.StringToHash("Base Layer.Attack");
+        private static readonly int ImportedJump = Animator.StringToHash("Base Layer.Jump");
+        private static readonly int ImportedDeath = Animator.StringToHash("Base Layer.Death");
         private Color[] surfaceColors;
         private MaterialPropertyBlock hitProperties;
         private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
@@ -90,6 +93,7 @@ namespace TowerTrials
                 return;
             }
             importedAnimator = visual.GetComponentInChildren<Animator>();
+            if (importedAnimator != null) importedAnimatorSpeed = importedAnimator.speed;
             surfaces = visual.GetComponentsInChildren<Renderer>();
             surfaceColors = new Color[surfaces.Length];
             for (int i = 0; i < surfaces.Length; i++) surfaceColors[i] = surfaces[i].sharedMaterial.GetColor(BaseColor);
@@ -135,12 +139,7 @@ namespace TowerTrials
             acting = true;
             t = Mathf.Clamp01(t);
             if (pose != previousPose && pose == CombatPose.Strike) SwingCount++;
-            if (pose != previousPose && importedAnimator != null)
-            {
-                if (pose == CombatPose.Anticipate) importedAnimator.SetTrigger(ImportedJump);
-                else if (pose == CombatPose.Windup) importedAnimator.SetTrigger(ImportedAttack);
-                else if (pose == CombatPose.Defeat) importedAnimator.SetTrigger(ImportedDeath);
-            }
+            PoseImported(pose, t);
             previousPose = pose;
             if (trail != null)
             {
@@ -190,6 +189,41 @@ namespace TowerTrials
             if (cape != null) cape.localRotation = capeRest * Quaternion.Euler(pose == CombatPose.Flight ? 24 : 0, 0, 0);
         }
 
+        private void PoseImported(CombatPose pose, float t)
+        {
+            if (importedAnimator == null) return;
+            int state;
+            float progress;
+            switch (pose)
+            {
+                case CombatPose.Anticipate: state = ImportedJump; progress = Mathf.Lerp(0, 0.12f, t); break;
+                case CombatPose.Flight: state = ImportedJump; progress = Mathf.Lerp(0.12f, 0.85f, t); break;
+                case CombatPose.Windup: state = ImportedAttack; progress = Mathf.Lerp(0, 0.22f, t); break;
+                case CombatPose.Strike: state = ImportedAttack; progress = Mathf.Lerp(0.22f, 0.40f, t); break;
+                case CombatPose.Recover: state = ImportedAttack; progress = Mathf.Lerp(0.40f, 0.999f, t); break;
+                case CombatPose.Defeat: state = ImportedDeath; progress = Mathf.Lerp(0, 0.999f, t); break;
+                default: return;
+            }
+            if (!importedAnimator.HasState(0, state)) return;
+            if (!importedPoseActive)
+            {
+                ClearImportedTriggers();
+                importedPoseActive = true;
+                importedAnimator.speed = 0;
+            }
+            // The combat coroutine owns the clock. Sampling its phase immediately prevents
+            // jump exit times and long controller blends from deferring the swing until home.
+            importedAnimator.Play(state, 0, progress);
+            importedAnimator.Update(0);
+        }
+
+        private void ClearImportedTriggers()
+        {
+            foreach (AnimatorControllerParameter parameter in importedAnimator.parameters)
+                if (parameter.type == AnimatorControllerParameterType.Trigger)
+                    importedAnimator.ResetTrigger(parameter.nameHash);
+        }
+
         private void SetBody(float x, float y, float lean, float stretch)
         {
             body.localPosition = new Vector3(x, y, 0);
@@ -200,6 +234,15 @@ namespace TowerTrials
         public void Release()
         {
             acting = false;
+            previousPose = CombatPose.Recover;
+            if (importedAnimator != null && importedPoseActive)
+            {
+                ClearImportedTriggers();
+                importedAnimator.speed = importedAnimatorSpeed;
+                importedPoseActive = false;
+                importedAnimator.Play(ImportedIdle, 0, 0);
+                importedAnimator.Update(0);
+            }
             HitFlash(0);
             if (trail != null) trail.emitting = false;
             Idle(Time.time * 2.8f + phase);

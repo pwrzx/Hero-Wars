@@ -4,7 +4,7 @@ Open `Assets/_Game/Scenes/HeroCenter.unity` and press Play. It is the first enab
 
 The bottom navigation opens Hero Center, Customize and Shop. Gold, gems, level, settings and the daily gift are available from the menu. Drag the hero to rotate the portrait. Adventure continues the existing saved tower run; Home returns from gameplay. The equipped hero, armor and weapon also appear in the tower game. Collection power describes cosmetic equipment; the existing tower puzzle's power and combat rules remain unchanged.
 
-The starter hero is Grove Warden from OlyPoly's FREE Hero Pack. Frost Sentinel and Stone Guardian are Rare chest unlocks; Ember Sovereign is Legendary. Starter gear includes Oakguard Shield and Wayfarer Sword. Customize has four skins, five armor choices (the packs' shields and cloaks), and nine swords, axes and maces. Locked equipment can be previewed; only owned equipment can be equipped.
+The starter hero is Grove Warden from OlyPoly's FREE Hero Pack. Frost Sentinel and Stone Guardian are Rare chest unlocks; Ember Sovereign is Legendary. Starter gear includes Oakguard Shield and Wayfarer Sword. Customize has four skins, three armor choices (shields), and nine swords, axes and maces. Grove Mantle and Stoneweave Cloak remain part of their original heroes and are not separate inventory items or chest rewards. Old cloak loadouts fall back to an owned shield when loaded. Locked equipment can be previewed; only owned equipment can be equipped.
 
 | Rarity | Color | Chest | Cost | Common / Rare / Epic / Legendary |
 | --- | --- | --- | --- | --- |

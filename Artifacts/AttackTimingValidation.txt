@@ -1,0 +1,3 @@
+PASS: repeated jump/attack/impact/return/idle checks on all four hero skins. The weapon moves before impact, the contact pose holds its time, and idle resumes without a delayed attack.
+PASS: timing assertions during 20 live attacks: slash animation begins at the enemy tower, impact feedback coincides with weapon contact, and no attack replays at the home tower.
+LIMIT: the combined physics suite stopped on attack 20 in its eight-floor scenario when Room_3 required landing-support recovery. All six three-room orders completed. Original campaign and player saves were restored.

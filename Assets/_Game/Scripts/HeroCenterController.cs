@@ -33,6 +33,7 @@ namespace TowerTrials
         private readonly TMP_Text[] categoryLabels = new TMP_Text[3];
         private TMP_Text goldText, gemsText, title, subtitle, heroName, powerText, ownedText, dailyText;
         private HeroPreview preview;
+        private UnityEngine.UI.GridLayoutGroup inventoryGrid;
         private HeroEquipment selected;
         private EquipmentSlot category;
         private int page;
@@ -211,6 +212,7 @@ namespace TowerTrials
             inventoryContent = Rect("Content", viewport, new Vector2(0, 1), Vector2.one);
             inventoryContent.pivot = new Vector2(0.5f, 1);
             var grid = inventoryContent.gameObject.AddComponent<UnityEngine.UI.GridLayoutGroup>();
+            inventoryGrid = grid;
             grid.cellSize = new Vector2(280, 196); grid.spacing = new Vector2(17, 17);
             grid.padding = new RectOffset(10, 10, 8, 8);
             grid.constraint = UnityEngine.UI.GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 3;
@@ -319,9 +321,7 @@ namespace TowerTrials
             }
             inventoryContent.anchoredPosition = Vector2.zero;
             Canvas.ForceUpdateCanvases();
-            var grid = inventoryContent.GetComponent<UnityEngine.UI.GridLayoutGroup>();
-            float width = ((RectTransform)inventoryContent.parent).rect.width;
-            grid.cellSize = new Vector2(Mathf.Max(120, (width - 54) / 3), 196);
+            UpdateInventoryLayout();
             ownedText.text = profile.owned.Count + " / " + catalog.equipment.Length + " items unlocked  |  Drag hero to rotate";
             SelectEquipment(profile.Equipped(slot));
         }
@@ -491,6 +491,21 @@ namespace TowerTrials
             {
                 if (modal.gameObject.activeSelf) CloseModal(); else ShowPage(0);
             }
+        }
+
+        private void LateUpdate()
+        {
+            // CanvasScaler and safe-area changes can resize an already open category.
+            if (page == 1) UpdateInventoryLayout();
+        }
+
+        private void UpdateInventoryLayout()
+        {
+            if (inventoryGrid == null) return;
+            float width = ((RectTransform)inventoryContent.parent).rect.width;
+            float available = width - inventoryGrid.padding.horizontal - inventoryGrid.spacing.x * 2;
+            Vector2 size = new Vector2(Mathf.Max(1, available / 3), 196);
+            if (inventoryGrid.cellSize != size) inventoryGrid.cellSize = size;
         }
 
         private void UpdateSafeArea()

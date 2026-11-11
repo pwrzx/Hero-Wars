@@ -1,0 +1,3 @@
+PASS: three equipment columns fit after resizing the safe area to 700 units.
+PASS: three equipment columns fit after resizing the safe area to 979 units.
+PASS: three equipment columns fit after resizing the safe area to 1080 units.

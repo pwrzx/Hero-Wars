@@ -20,6 +20,13 @@ public static class HeroCenterChecks
         Check(catalog.equipment.Count(item => item.slot == EquipmentSlot.Skin && item.starter) == 1, "One unlocked starter hero");
         Check(catalog.equipment.Where(item => item.slot == EquipmentSlot.Skin && !item.starter).All(item => item.rarity == ItemRarity.Rare || item.rarity == ItemRarity.Legendary), "Other heroes are Rare or Legendary");
         Check(catalog.chests.Length == 4, "Four chest tiers");
+        Check(catalog.equipment.Where(item => item.slot == EquipmentSlot.Armor).All(item => !item.cloak), "Armor inventory contains shields only");
+        foreach (string retired in new[] { "armor.grove", "armor.stone" })
+        {
+            var legacy = new HeroProfile { armor = retired, owned = new List<string> { "skin.nature", "weapon.sword1", retired } };
+            legacy.Repair(catalog);
+            Check(catalog.Find(retired) == null && !legacy.Owns(retired) && legacy.armor == "armor.oak", "Retired cloak loadout repairs to an owned shield: " + retired);
+        }
         HeroProfile profile = new HeroProfile(); profile.Repair(catalog);
         Check(profile.owned.Count == 3, "Starter skin, armor and weapon are owned");
         Check(!profile.TryEquip(catalog.Find("skin.fire")), "A locked hero cannot be equipped");
@@ -61,8 +68,50 @@ public static class HeroCenterChecks
         Check(restored.TryClaimDaily(day.AddDays(1)), "Next UTC day resets the gift");
         Check(UnityEditor.EditorBuildSettings.scenes[0].path == HeroCenterSetup.ScenePath, "Hero Center is the startup scene");
         VerifyEquipment(catalog, Check);
-        string report = "PASS: " + assertions + " Hero Center assertions.\nCatalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.\nAll four hero rigs, nine weapons and three shields at portrait/gameplay sizes with rotated parents; closed idle grips; handle alignment through idle, running, attack, jump and death animations.\n";
+        VerifyCombatMotion(catalog, Check);
+        string report = "PASS: " + assertions + " Hero Center assertions.\nCatalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.\nAll four hero rigs, nine weapons and three shields at portrait/gameplay sizes with rotated parents; closed idle grips; handle alignment through idle, running, attack, jump and death animations.\nCloaks remain visible on their original heroes and are absent from equipment/reward pools. Retired cloak loadouts repair to an owned shield. Repeated combat interrupts the jump immediately, samples a moving weapon before impact, and returns to idle without a delayed attack.\n";
         Directory.CreateDirectory("Artifacts"); File.WriteAllText("Artifacts/HeroCenterValidation.txt", report); Debug.Log(report);
+    }
+
+    private static void VerifyCombatMotion(HeroCenterCatalog catalog, Action<bool, string> check)
+    {
+        foreach (HeroEquipment skin in catalog.equipment.Where(item => item.slot == EquipmentSlot.Skin))
+        {
+            var owner = new GameObject("CombatMotionCheck");
+            try
+            {
+                var motion = owner.AddComponent<CharacterMotion>();
+                motion.Configure(true);
+                motion.UseHeroLoadout(catalog, new HeroProfile { skin = skin.id, armor = "armor.oak", weapon = "weapon.sword1" });
+                Animator animator = owner.GetComponentInChildren<Animator>();
+                Transform hand = owner.GetComponentsInChildren<Transform>().First(t => t.name == "CC_Base_R_Hand");
+                float originalSpeed = animator.speed;
+                for (int attack = 0; attack < 2; attack++)
+                {
+                    motion.Pose(CombatPose.Anticipate, 1);
+                    motion.Pose(CombatPose.Flight, 1);
+                    motion.Pose(CombatPose.Windup, 0);
+                    check(animator.GetCurrentAnimatorStateInfo(0).IsName("Base Layer.Attack"), "Attack immediately interrupts jump: " + skin.id);
+                    motion.Pose(CombatPose.Windup, 1);
+                    Vector3 windup = hand.position;
+                    motion.Pose(CombatPose.Strike, 1);
+                    check(animator.GetCurrentAnimatorStateInfo(0).IsName("Base Layer.Attack"), "Attack is visible at impact");
+                    check(Vector3.Distance(windup, hand.position) > 0.1f, "Weapon hand swings before impact");
+                    float impactTime = animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+                    animator.Update(0.2f);
+                    check(Mathf.Abs(animator.GetCurrentAnimatorStateInfo(0).normalizedTime - impactTime) < 0.001f, "Impact hold does not drift from combat timing");
+                    motion.Pose(CombatPose.Recover, 1);
+                    motion.Pose(CombatPose.Flight, 0);
+                    check(animator.GetCurrentAnimatorStateInfo(0).IsName("Base Layer.Jump"), "Return flight interrupts recovery");
+                    motion.Release();
+                    animator.Update(0.5f);
+                    check(animator.GetCurrentAnimatorStateInfo(0).IsName("Base Layer.Blend"), "No delayed attack after returning home");
+                    check(Mathf.Approximately(animator.speed, originalSpeed), "Idle animation resumes at its original speed");
+                }
+                check(motion.SwingCount == 2, "Repeated attacks swing exactly once each");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(owner); }
+        }
     }
 
     private static void VerifyEquipment(HeroCenterCatalog catalog, Action<bool, string> check)
@@ -88,6 +137,9 @@ public static class HeroCenterChecks
                             var bones = hero.GetComponentsInChildren<Transform>(true).GroupBy(t => t.name).ToDictionary(group => group.Key, group => group.First());
                             Animator animator = hero.GetComponentInChildren<Animator>();
                             string context = skin.id + " / " + weapon.id + " / " + shield.id + " / " + height;
+                            if (skin.id == "skin.nature" || skin.id == "skin.rock")
+                                check(hero.GetComponentsInChildren<Renderer>().Any(r => r.enabled && r.name.StartsWith("Cloak", StringComparison.OrdinalIgnoreCase)),
+                                    "Original hero cloak remains visible with a shield: " + context);
                             check(animator.isHuman && animator.runtimeAnimatorController == catalog.armedAnimatorController, "Armed humanoid animations: " + context);
                             foreach (HeroEquipment item in new[] { weapon, shield })
                             {

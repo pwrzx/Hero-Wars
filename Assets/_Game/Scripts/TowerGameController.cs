@@ -416,10 +416,10 @@ namespace TowerTrials
             Vector3 destination = enemy.position + new Vector3(-0.63f, 0.08f, -0.25f);
             hint.text = "";
             yield return PoseHero(CombatPose.Anticipate, 0.055f);
-            combatAudio.Play(CombatSound.Swing);
             yield return MoveHero(home, destination, attackDuration, 0.85f);
             feedback.Landing(destination);
             yield return PoseHero(CombatPose.Windup, 0.075f);
+            combatAudio.Play(CombatSound.Swing);
             feedback.Slash(enemy.position);
             yield return PoseHero(CombatPose.Strike, 0.11f);
             AttackOutcome outcome = Run.Attack(index, room);
@@ -466,8 +466,8 @@ namespace TowerTrials
             yield return MoveHero(destination, home, attackDuration, 0.45f);
             feedback.Landing(home);
             combatAudio.Play(CombatSound.Power);
-            yield return PoseHero(CombatPose.Recover, 0.06f);
             heroMotion.Release();
+            heroMotion.ReactToLanding(1);
             // Keep input locked until the crown and every surviving room have landed.
             yield return settling;
             if (outcome == AttackOutcome.TowerCleared || outcome == AttackOutcome.StageCleared)

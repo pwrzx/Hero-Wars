@@ -90,28 +90,6 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: 37f5e8be15d66f345a0844a3e04420aa, type: 3}
     power: 80
     gripPoint: {x: 0, y: 0, z: -0.21}
-  - id: armor.grove
-    title: Grove Mantle
-    description: A cloak from the ancient forest.
-    slot: 1
-    rarity: 0
-    starter: 0
-    cloak: 1
-    prefab: {fileID: 919132149155446097, guid: f382d52810fe9634096b3754c739595f, type: 3}
-    icon: {fileID: 21300000, guid: 131a3f02e9eb12147a01f0897fd268dc, type: 3}
-    power: 12
-    gripPoint: {x: 0, y: 0, z: 0}
-  - id: armor.stone
-    title: Stoneweave Cloak
-    description: A mantle woven for a guardian.
-    slot: 1
-    rarity: 2
-    starter: 0
-    cloak: 1
-    prefab: {fileID: 919132149155446097, guid: 197c66b24bb5db64f8da69ea153ed38c, type: 3}
-    icon: {fileID: 21300000, guid: 892a3605f1daa324191427bc0bdfb47c, type: 3}
-    power: 50
-    gripPoint: {x: 0, y: 0, z: 0}
   - id: weapon.sword1
     title: Wayfarer Sword
     description: A reliable blade. Ready for adventure.

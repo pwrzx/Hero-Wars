@@ -80,9 +80,12 @@ namespace TowerTrials
                 foreach (Renderer original in hero.GetComponentsInChildren<Renderer>())
                     if (!original.transform.IsChildOf(equipment.transform) && original.name.StartsWith("Cloak", StringComparison.OrdinalIgnoreCase))
                         original.enabled = false;
-                Bounds bounds = BoundsOf(equipment);
-                Vector3 center = hero.transform.position + Vector3.up * height * 0.52f - hero.transform.forward * height * 0.12f;
-                equipment.transform.position += center - bounds.center;
+                // Cloaks are authored from the collar down. Align that collar with the neck,
+                // rather than centering a long mesh, which lifts its top above the shoulders.
+                Transform collar = bones.TryGetValue("CC_Base_NeckTwist01", out Transform neck) ? neck : socket;
+                Vector3 mount = new Vector3(localBounds.center.x, localBounds.max.y, localBounds.max.z);
+                Vector3 anchor = collar.position - hero.transform.forward * height * 0.08f;
+                equipment.transform.position += anchor - equipment.transform.TransformPoint(mount);
             }
             else
             {

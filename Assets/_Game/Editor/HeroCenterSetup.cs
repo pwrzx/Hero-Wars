@@ -48,8 +48,6 @@ public static class HeroCenterSetup
             Item("armor.oak", "Oakguard Shield", "A trusted shield for a new hero.", EquipmentSlot.Armor, ItemRarity.Common, WeaponRoot + "ShieldOne.prefab", 8, true),
             Item("armor.sentinel", "Sentinel Shield", "Steel protection for the journey.", EquipmentSlot.Armor, ItemRarity.Rare, WeaponRoot + "ShieldTwo.prefab", 25),
             Item("armor.kingsguard", "Kingsguard Shield", "Protection worthy of a sovereign.", EquipmentSlot.Armor, ItemRarity.Legendary, WeaponRoot + "ShieldThree.prefab", 80),
-            Item("armor.grove", "Grove Mantle", "A cloak from the ancient forest.", EquipmentSlot.Armor, ItemRarity.Common, "Assets/Pack_Heros/Models/Nature/Cloak_Nature.fbx", 12, false, true),
-            Item("armor.stone", "Stoneweave Cloak", "A mantle woven for a guardian.", EquipmentSlot.Armor, ItemRarity.Epic, "Assets/Pack_Heros/Models/Rock/Cloak_Rock.fbx", 50, false, true),
             Item("weapon.sword1", "Wayfarer Sword", "A reliable blade. Ready for adventure.", EquipmentSlot.Weapon, ItemRarity.Common, WeaponRoot + "SwordOne.prefab", 12, true),
             Item("weapon.axe1", "Ironwood Axe", "A sturdy, honest edge.", EquipmentSlot.Weapon, ItemRarity.Common, WeaponRoot + "AxeOne.prefab", 14),
             Item("weapon.mace1", "Traveler Mace", "A simple answer to a tough enemy.", EquipmentSlot.Weapon, ItemRarity.Common, WeaponRoot + "BluntOne.prefab", 14),
@@ -77,7 +75,7 @@ public static class HeroCenterSetup
             chest.icon = BakeIcon(chest.id, Resources.Load<GameObject>("Models/Chest"), false, null, HeroCenterCatalog.RarityColor(chest.rarity));
         EditorUtility.SetDirty(catalog); AssetDatabase.SaveAssets();
         BuildScene(catalog);
-        Debug.Log("Hero Center ready: 4 heroes, 5 armor items, 9 weapons, 4 chest types. Source models and textures preserved.");
+        Debug.Log("Hero Center ready: 4 heroes, 3 shields, 9 weapons, 4 chest types. Native hero cloaks, source models and textures preserved.");
     }
 
     private static HeroEquipment Item(string id, string title, string description, EquipmentSlot slot, ItemRarity rarity, string path, int power, bool starter = false, bool cloak = false)
