@@ -4,9 +4,9 @@ namespace TowerTrials
 {
     // Small, resolution-independent UI geometry, authored here rather than using text glyphs as icons.
     [RequireComponent(typeof(CanvasRenderer))]
-    public sealed class GameUiShape : UnityEngine.UI.MaskableGraphic
+    public sealed class GameUiShape : UnityEngine.UI.Image
     {
-        public enum Shape { Plate, Restart, Forward, Pause }
+        public enum Shape { Plate, Restart, Forward, Pause, Artwork, Pennon }
         [SerializeField] private Shape shape;
         [SerializeField] private float corner = 8;
 
@@ -18,10 +18,34 @@ namespace TowerTrials
             SetVerticesDirty();
         }
 
+        public void SetArtwork(Sprite artwork, bool sliced, float pixelScale = 1)
+        {
+            sprite = artwork;
+            type = sliced ? Type.Sliced : Type.Simple;
+            preserveAspect = !sliced;
+            pixelsPerUnitMultiplier = pixelScale;
+            Configure(Shape.Artwork, Color.white);
+        }
+
         protected override void OnPopulateMesh(UnityEngine.UI.VertexHelper mesh)
         {
+            if (shape == Shape.Artwork)
+            {
+                base.OnPopulateMesh(mesh);
+                return;
+            }
             mesh.Clear();
             Rect rect = GetPixelAdjustedRect();
+            if (shape == Shape.Pennon)
+            {
+                AddVertex(mesh, new Vector2(rect.xMin, rect.yMin));
+                AddVertex(mesh, new Vector2(rect.xMax, rect.yMin));
+                AddVertex(mesh, new Vector2(rect.xMax - corner, rect.center.y));
+                AddVertex(mesh, new Vector2(rect.xMax, rect.yMax));
+                AddVertex(mesh, new Vector2(rect.xMin, rect.yMax));
+                mesh.AddTriangle(0, 1, 2); mesh.AddTriangle(0, 2, 4); mesh.AddTriangle(2, 3, 4);
+                return;
+            }
             if (shape == Shape.Plate)
             {
                 float cut = Mathf.Min(corner, Mathf.Min(rect.width, rect.height) * 0.25f);

@@ -29,7 +29,7 @@ namespace TowerTrials
         private RectTransform canvasRect, safeArea, resultPanel;
         private RectTransform pausePanel, pauseCard;
         private RectTransform resultCard;
-        private TMP_Text stageLabel, powerLabel, hint, resultTitle, resultDetail;
+        private TMP_Text powerLabel, hint, resultTitle, resultDetail;
         private TMP_Text reviveDetail, reviveStatus;
         private GameButton reviveButton;
         private RewardedContinueTicket reviveTicket;
@@ -196,9 +196,8 @@ namespace TowerTrials
             var home = new GameObject("HeroTower").transform;
             home.SetParent(presentation, false);
             home.position = new Vector3(HomeX, FloorY, 0);
-            Model("TowerRoom", home, Vector3.zero, 1);
-            // An open hero platform keeps the knight and power badge unobstructed.
-            Block("Hero foundation", home, new Vector3(0, -2, 0.2f), new Vector3(2.3f, 3.9f, 1.3f), "Stone_DeepTeal");
+            Model("HeroBalcony", home, Vector3.zero, 1);
+            Model("TowerFoundation", home, Vector3.zero, 1);
             hero = Model("Knight", presentation, new Vector3(HomeX, FloorY + 0.12f, -0.12f), 0.78f);
             hero.localRotation = Quaternion.Euler(0, 180 - characterFacingAngle, 0);
             heroMotion = hero.GetComponent<CharacterMotion>();
@@ -262,7 +261,7 @@ namespace TowerTrials
                     support.size = new Vector3(2.46f, 0.2f, 1.46f);
                     support.contactOffset = 0.002f;
                 }
-                Block("Tower foundation", view.root, new Vector3(0, -2, 0.2f), new Vector3(2.3f, 3.9f, 1.3f), "Stone_DeepTeal");
+                Model("TowerFoundation", view.root, Vector3.zero, 1);
                 TintTower(view, distance == 0 ? 1 : 0.56f);
             }
         }
@@ -293,39 +292,42 @@ namespace TowerTrials
             input.gameObject.AddComponent<SwipeAttackInput>().controller = this;
 
             var header = Panel("Header", safeArea, new Vector2(0, 1), Vector2.one,
-                new Vector2(32, -296), new Vector2(-32, -28), Ink);
-            AddBorder(header);
-            var title = Text("GameTitle", header, "Hero Wars", 54, Paper, GameTextRole.Display);
-            Place(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(28, -12), new Vector2(430, 144));
-            stageLabel = Text("StageTitle", header, "", 30, Gold);
-            Place(stageLabel.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -176), new Vector2(920, 60));
-            stageLabel.enableAutoSizing = true; stageLabel.fontSizeMin = 25; stageLabel.fontSizeMax = 30;
+                new Vector2(22, -186), new Vector2(-22, -26), Color.clear);
+            var ribbon = UiShape("KeepBanner", header, GameUiShape.Shape.Pennon, new Color32(36, 59, 65, 255), 25).rectTransform;
+            ribbon.anchorMax = new Vector2(0.59f, 1);
+            var stage = Text("StageNumber", ribbon, "STAGE " + (stageIndex + 1).ToString("00"), 30, Gold, GameTextRole.Action);
+            Place(stage.rectTransform, Vector2.up, Vector2.up, new Vector2(24, -10), new Vector2(270, 44));
+            var title = Text("StageTitle", ribbon, System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+                Run.Definition.title.ToLowerInvariant()), 54, Paper, GameTextRole.Display);
+            GameUi.Fit(title.rectTransform, new Vector2(0, 0.19f), new Vector2(1, 0.69f));
+            title.rectTransform.offsetMin = new Vector2(24, 0); title.rectTransform.offsetMax = new Vector2(-44, 0);
+            title.enableAutoSizing = true; title.fontSizeMin = 30; title.fontSizeMax = 54;
+            title.textWrappingMode = TextWrappingModes.NoWrap;
             retryButton = Button("Pause", header, "Pause", () => SetPaused(true), false);
             ((GameButton)retryButton).SetPauseIcon();
-            Place(retryButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-24, -12), new Vector2(224, 144));
+            GameUi.Fit((RectTransform)retryButton.transform, new Vector2(0.808f, 0.18f), Vector2.one);
             homeButton = Button("HeroCenterReturn", header, "Home", () =>
             {
                 if (!busy) HeroCenterController.ReturnToHeroCenter();
             }, false);
-            ((GameButton)homeButton).SetRestartIcon(false);
-            Place(homeButton.GetComponent<RectTransform>(), Vector2.one, Vector2.one, new Vector2(-264, -12), new Vector2(224, 144));
+            ((GameButton)homeButton).SetHeroIcon();
+            GameUi.Fit((RectTransform)homeButton.transform, new Vector2(0.604f, 0.18f), new Vector2(0.796f, 1));
             int towerCount = Run.Definition.towers.Length;
             for (int t = 0; t < towerCount; t++)
             {
-                var bar = Panel("TowerProgress_" + t, header, new Vector2((float)t / towerCount, 0),
-                    new Vector2((float)(t + 1) / towerCount, 0), new Vector2(16, 9),
-                    new Vector2(-16, 17), new Color(0.17f, 0.29f, 0.32f));
+                var bar = Panel("TowerProgress_" + t, ribbon, new Vector2(0.04f + 0.84f * t / towerCount, 0),
+                    new Vector2(0.04f + 0.84f * (t + 1) / towerCount, 0), new Vector2(0, 14),
+                    new Vector2(-8, 21), new Color(0.17f, 0.29f, 0.32f));
                 progress.Add(bar.GetComponent<UnityEngine.UI.Image>());
             }
 
             var footer = Panel("Footer", safeArea, Vector2.zero, new Vector2(1, 0),
-                new Vector2(32, 28), new Vector2(-32, 222), Ink);
-            AddBorder(footer);
+                new Vector2(32, 28), new Vector2(-32, 169), new Color32(33, 52, 57, 246));
             var gesture = Text("Gesture", footer, "Swipe toward a room", 40, Paper, GameTextRole.Action);
-            Place(gesture.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(940, 55));
+            Place(gesture.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -8), new Vector2(940, 58));
             gesture.alignment = TextAlignmentOptions.Center;
             hint = Text("Hint", footer, "", 32, Paper);
-            Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 32), new Vector2(940, 65));
+            Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(940, 62));
             hint.alignment = TextAlignmentOptions.Center;
 
             resultPanel = Panel("ResultOverlay", safeArea, Vector2.zero, Vector2.one,
@@ -668,7 +670,6 @@ namespace TowerTrials
 
         private void RefreshHud()
         {
-            stageLabel.text = "STAGE " + (stageIndex + 1).ToString("00") + "  /  " + Run.Definition.title;
             powerLabel.text = GameUiTheme.Number(Run.Power);
             SizeHeroBadge(Run.Power);
             hint.text = "Your power: " + GameUiTheme.Number(Run.Power) + ". Choose a lower red number.";

@@ -99,6 +99,6 @@ namespace TowerTrials
         }
         public const string HelpText = "Pick your battles.\n\nYour blue number is your power. Red numbers belong to enemies.\n\nSwipe right toward a room with a LOWER number. Defeat that enemy to add its power to yours.\n\nClear every room to bring the next tower forward. A higher or equal number defeats you. Retry any time.\n\nClear keeps to earn gold and gems. Unlock cosmetics in the Shop; equip them in Customize.";
         public static string AboutText => "HERO WARS  /  " + Application.version +
-            "\n\nAn offline tower puzzle adventure.\nYour progress and settings stay on this device.\nNo accounts, ads, purchases, or analytics.\n\nHero art: OlyPoly\nWeapons: Game Lair Studio\nUI assets: 300Mind\nFonts: Alegreya (SIL Open Font License)\nMusic & combat sounds: original synthesis";
+            "\n\nAn offline tower puzzle adventure.\nYour progress and settings stay on this device.\nNo accounts, ads, purchases, or analytics.\n\nHero art: OlyPoly\nWeapons: Game Lair Studio\nUI assets: 300Mind\nFonts: Germania One and Oswald (SIL Open Font License)\nMusic & combat sounds: original synthesis";
     }
 }

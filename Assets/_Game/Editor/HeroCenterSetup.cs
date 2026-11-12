@@ -33,8 +33,7 @@ public static class HeroCenterSetup
         catalog.heroIcon = SpriteFromPack(2, 13); catalog.armorIcon = SpriteFromPack(1, 1);
         catalog.shopIcon = SpriteFromPack(1, 0); catalog.settingsIcon = SpriteFromPack(1, 4);
         catalog.dailyIcon = SpriteFromPack(1, 3); catalog.slotFrame = SpriteFromPack(1, 25);
-        catalog.primaryButton = Sliced(catalog, "GoldenAction", SpriteFromPack(1, 21), 25);
-        catalog.secondaryButton = Sliced(catalog, "DarkAction", SpriteFromPack(2, 10), 22);
+        PrepareButtonArt(catalog);
         catalog.background = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Art/Backgrounds/AncientChasm.png");
         catalog.weaponMaterial = PrepareWeaponMaterial();
         catalog.cloakMaterial = PrepareCloakMaterial();
@@ -122,6 +121,14 @@ public static class HeroCenterSetup
         string path = "Assets/300Mind/2D Game UI Kit/Sprites/UI-pack_Sprite_" + sheet + ".png";
         string name = "UI-pack_Sprite_" + sheet + "_" + index;
         return AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>().First(sprite => sprite.name == name);
+    }
+
+    public static void PrepareButtonArt(HeroCenterCatalog catalog)
+    {
+        catalog.primaryButton = Sliced(catalog, "GoldenAction", SpriteFromPack(1, 21), 25);
+        catalog.secondaryButton = Sliced(catalog, "DarkAction", SpriteFromPack(2, 10), 22);
+        catalog.beveledButton = Sliced(catalog, "BeveledAction", SpriteFromPack(2, 4), 102);
+        EditorUtility.SetDirty(catalog);
     }
 
     private static Sprite Sliced(HeroCenterCatalog catalog, string name, Sprite source, float edge)
@@ -261,7 +268,8 @@ public static class HeroCenterSetup
         EditorSceneManager.SaveScene(scene, ScenePath);
         var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         scenes.RemoveAll(entry => entry.path == ScenePath);
-        scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
+        int startup = scenes.FindIndex(entry => entry.path == StartupLoadingSetup.ScenePath);
+        scenes.Insert(startup < 0 ? 0 : startup + 1, new EditorBuildSettingsScene(ScenePath, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         Selection.activeGameObject = menu.gameObject;
     }

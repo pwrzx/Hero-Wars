@@ -12,7 +12,7 @@ using UnityEngine.Rendering;
 public static class MobileReleaseBuild
 {
     public const string ApplicationId = "com.herowars.towertrials";
-    private static readonly string[] Scenes = { HeroCenterSetup.ScenePath, PrototypeSetup.ScenePath };
+    private static readonly string[] Scenes = { StartupLoadingSetup.ScenePath, HeroCenterSetup.ScenePath, PrototypeSetup.ScenePath };
 
     [MenuItem("Hero Wars/Release/Prepare mobile settings")]
     public static void Prepare()

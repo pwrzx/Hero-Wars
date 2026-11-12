@@ -21,13 +21,19 @@ namespace TowerTrials
             label = actionLabel;
             content = contents;
             targetGraphic = face;
+            HeroCenterCatalog kit = HeroCenterCatalog.Load();
+            bool tile = !isPrimary && actionIcon == null && string.IsNullOrEmpty(actionLabel.text);
+            Sprite art = isPrimary ? kit.primaryButton : tile ? kit.secondaryButton : kit.beveledButton;
+            float pixelScale = isPrimary ? 1.35f : tile ? 1.5f : 4;
+            face.SetArtwork(art, true, pixelScale);
+            rim.SetArtwork(art, true, pixelScale);
             transition = Transition.ColorTint;
             var palette = colors;
-            palette.normalColor = isPrimary ? Hex(196, 163, 103) : Hex(17, 46, 48);
-            palette.highlightedColor = isPrimary ? Hex(220, 189, 131) : Hex(31, 70, 69);
+            palette.normalColor = isPrimary ? Hex(248, 187, 141) : tile ? Hex(192, 196, 191) : Hex(182, 116, 103);
+            palette.highlightedColor = isPrimary ? Hex(255, 218, 166) : tile ? Color.white : Hex(218, 148, 127);
             palette.selectedColor = palette.highlightedColor;
-            palette.pressedColor = isPrimary ? Hex(166, 131, 75) : Hex(10, 33, 36);
-            palette.disabledColor = Hex(24, 48, 51);
+            palette.pressedColor = isPrimary ? Hex(213, 150, 108) : Hex(132, 91, 86);
+            palette.disabledColor = isPrimary ? Hex(94, 93, 93) : Hex(112, 77, 74);
             palette.colorMultiplier = 1;
             palette.fadeDuration = 0.1f;
             colors = palette;
@@ -42,12 +48,11 @@ namespace TowerTrials
             bool disabled = state == SelectionState.Disabled;
             bool focus = state == SelectionState.Selected;
             bool highlight = state == SelectionState.Highlighted;
-            Color edge = disabled ? Hex(62, 82, 80) : focus ? Hex(255, 239, 192) :
-                highlight ? Hex(231, 204, 148) : primary ? Hex(239, 211, 159) : Hex(146, 126, 81);
-            Color ink = disabled ? Hex(149, 173, 168) : primary ? Hex(19, 39, 39) : GameUiTheme.Parchment;
+            Color edge = focus ? Color.white : highlight ? Hex(238, 211, 176) : Hex(94, 80, 74);
+            Color ink = disabled ? Hex(218, 216, 200) : primary ? Hex(62, 37, 22) : Hex(255, 245, 220);
             rim.CrossFadeColor(edge, instant ? 0 : 0.1f, true, true);
             label.CrossFadeColor(ink, instant ? 0 : 0.1f, true, true);
-            if (icon != null) icon.CrossFadeColor(ink, instant ? 0 : 0.1f, true, true);
+            if (icon != null) icon.CrossFadeColor(icon.sprite == null ? ink : Color.white, instant ? 0 : 0.1f, true, true);
             contentTarget = state == SelectionState.Pressed ? new Vector2(0, -3) : Vector2.zero;
             if (instant && content != null) content.anchoredPosition = contentTarget;
         }
@@ -74,6 +79,12 @@ namespace TowerTrials
         {
             if (icon == null) return;
             icon.Configure(GameUiShape.Shape.Pause, Color.white);
+            DoStateTransition(currentSelectionState, true);
+        }
+
+        public void SetHeroIcon()
+        {
+            icon.SetArtwork(HeroCenterCatalog.Load().heroIcon, false);
             DoStateTransition(currentSelectionState, true);
         }
 

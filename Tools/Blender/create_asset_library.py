@@ -123,22 +123,120 @@ limb("Club handle", (0.46,-0.08,0.5), (0.46,-0.08,1.25), 0.055, dark, enemy)
 sphere("Club head", (0.46,-0.08,1.29), (0.17,0.15,0.22), steel, enemy)
 
 room = collection("03_Architecture_TowerRoom")
-box("Floor slab", (0,0,0), (2.45,1.45,0.2), edge, room)
-box("Back wall", (0,0.6,0.87), (2.4,0.22,1.54), stone, room)
-for x in (-1.12,1.12):
-    box("Stone pillar", (x,0,0.85), (0.22,1.42,1.58), stone, room)
-    box("Pillar trim", (x,-0.1,0.22), (0.3,1.45,0.15), edge, room)
-for z in (0.4,0.8,1.2):
-    box("Masonry course", (0,0.472,z), (2.15,0.014,0.018), edge, room,0)
-box("Gold threshold", (0,-0.73,0.10), (2.4,0.04,0.045), gold, room,0.005)
+limestone = material("Keep_Limestone", (0.72, 0.69, 0.62))
+ashlar = material("Keep_Ashlar", (0.32, 0.40, 0.46))
+vermilion = material("Keep_Vermilion", (0.68, 0.20, 0.13))
+
+def cut_stone(name, outline, front, back, mat, col, bevel=0.018):
+    """Extrude an X/Z silhouette between two Y planes; negative Y faces the player."""
+    n = len(outline)
+    if sum(x * outline[(i+1) % n][1] - z * outline[(i+1) % n][0]
+           for i, (x, z) in enumerate(outline)) < 0:
+        outline = outline[::-1]
+    vertices = [(x, y, z) for y in (front, back) for x, z in outline]
+    faces = [tuple(range(n)), tuple(reversed(range(n, 2*n)))]
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append((i, i+n, j+n, j))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    return finish(obj, name, mat, col, bevel)
+
+def gallery_floor(col):
+    box("Gallery floor", (0, 0, 0), (2.45, 1.45, 0.20), limestone, col, 0.035)
+    box("Floor shadow course", (0, 0, -0.067), (2.49, 1.48, 0.068), ashlar, col, 0.018)
+
+gallery_floor(room)
+for side in (-1, 1):
+    x = side * 1.10
+    box("Gallery pier", (x, 0.02, 0.82), (0.23, 1.31, 1.46), ashlar, room)
+    box("Pier foot", (x, -0.015, 0.18), (0.31, 1.39, 0.17), limestone, room, 0.025)
+    box("Pier capital", (x, -0.02, 0.96), (0.33, 1.40, 0.13), limestone, room, 0.022)
+    # The spandrel closes the corner above the arch without covering the fighter.
+    cut_stone("Spandrel", [(side*0.20, 1.55), (side*1.21, 1.55),
+              (side*1.21, 0.99), (side*1.02, 0.99), (side*0.77, 1.32)],
+              -0.48, 0.64, ashlar, room)
+
+def arch_point(angle, outer):
+    width, rise = (1.20, 0.65) if outer else (0.98, 0.48)
+    return (width * math.cos(angle), 0.98 + rise * math.sin(angle))
+
+for index in range(7):
+    left = math.pi * index / 7 + 0.005
+    right = math.pi * (index + 1) / 7 - 0.005
+    middle = (left + right) / 2
+    outline = [arch_point(a, True) for a in (left, middle, right)]
+    outline += [arch_point(a, False) for a in (right, middle, left)]
+    cut_stone("Arch voussoir", outline, -0.68, -0.45, limestone, room, 0.012)
 
 roof = collection("04_Architecture_TowerCrown")
-box("Crown ledge", (0,0,0.06), (2.65,1.64,0.23), edge, roof)
-for x in (-1.03,-0.35,0.35,1.03):
-    box("Battlement", (x,0.50,0.4), (0.39,0.42,0.5), stone, roof)
-for x in (-1.06,1.06):
-    box("Front merlon", (x,-0.5,0.4), (0.39,0.42,0.5), stone, roof)
-box("Crown crest", (0,-0.83,0.10), (0.3,0.05,0.23), gold, roof)
+box("Parapet cornice", (0,0,0.015), (2.64,1.62,0.21), limestone, roof)
+box("Parapet wall", (0,0,0.19), (2.49,1.48,0.22), ashlar, roof, 0.025)
+for x in (-1.04, -0.35, 0.35, 1.04):
+    height = 0.76 if abs(x) > 0.9 else 0.63
+    outline = [(x-0.21, 0.27), (x+0.21, 0.27), (x+0.21, height-0.08),
+               (x+0.15, height), (x-0.15, height), (x-0.21, height-0.08)]
+    cut_stone("Chamfered merlon", outline, -0.71, -0.27, limestone, roof)
+    if abs(x) > 0.9:
+        cut_stone("Return merlon", outline, 0.29, 0.69, ashlar, roof)
+cut_stone("Shield mount", [(-0.19,0.29),(0.19,0.29),(0.16,0.02),(0,-0.09),(-0.16,0.02)],
+          -0.83,-0.72, gold, roof)
+cut_stone("Shield enamel", [(-0.13,0.24),(0.13,0.24),(0.10,0.05),(0,-0.025),(-0.10,0.05)],
+          -0.849,-0.824, vermilion, roof, 0.006)
+limb("Pennant staff", (-0.77,0.20,0.26), (-0.77,0.20,1.31), 0.033, gold, roof)
+sphere("Staff finial", (-0.77,0.20,1.34), (0.066,0.066,0.076), gold, roof)
+cut_stone("Swallowtail pennant", [(-0.75,1.28),(-0.50,1.29),(-0.23,1.22),(0.15,1.25),
+          (-0.01,1.08),(0.14,0.97),(-0.23,0.94),(-0.51,1.01),(-0.75,0.98)],
+          0.16,0.205,vermilion,roof,0.009)
+
+foundation = collection("06_Architecture_TowerFoundation")
+# Staggered oversize blocks read as masonry at phone scale. The shaft continues below the frame.
+for row in range(12):
+    top = -0.08 - row * 0.84
+    seam = -0.31 if row % 2 == 0 else 0.41
+    for start, end in ((-1.14, seam), (seam, 1.14)):
+        box("Foundation ashlar", ((start+end)/2, 0.04, top-0.42),
+            (end-start-0.008, 1.28, 0.837), ashlar, foundation, 0.018)
+for side in (-1, 1):
+    cut_stone("Battered buttress", [(side*0.87,-0.11),(side*1.12,-0.11),
+              (side*1.12,-0.60),(side*1.24,-1.18),(side*1.24,-10.16),(side*0.87,-10.16)],
+              -0.70,-0.42,ashlar,foundation,0.035)
+cut_stone("Lancet surround", [(-0.27,-1.72),(0.27,-1.72),(0.27,-0.78),(0,-0.53),(-0.27,-0.78)],
+          -0.634,-0.59,limestone,foundation)
+cut_stone("Lancet reveal", [(-0.135,-1.65),(0.135,-1.65),(0.135,-0.84),(0,-0.70),(-0.135,-0.84)],
+          -0.65,-0.626,stone,foundation,0.008)
+box("Lancet sill", (0,-0.64,-1.73), (0.62,0.14,0.09), limestone,foundation,0.018)
+
+balcony = collection("07_Architecture_HeroBalcony")
+gallery_floor(balcony)
+box("Low rear parapet", (0,0.59,0.22), (2.34,0.21,0.27), ashlar,balcony)
+for x in (-1.05,1.05):
+    box("Corner block", (x,0.04,0.27), (0.27,1.30,0.36), ashlar,balcony)
+    box("Parapet cap", (x,0.04,0.46), (0.34,1.36,0.11), limestone,balcony,0.025)
+cut_stone("Blue standard", [(-0.96,0.10),(-0.46,0.10),(-0.46,-0.58),(-0.71,-0.80),(-0.96,-0.58)],
+          -0.79,-0.735,blue,balcony,0.012)
+cut_stone("Standard device", [(-0.71,-0.15),(-0.61,-0.33),(-0.71,-0.51),(-0.81,-0.33)],
+          -0.802,-0.785,gold,balcony,0.005)
+box("Standard rail", (-0.71,-0.765,0.065), (0.59,0.10,0.075), gold,balcony,0.015)
+
+# Keep one renderer per stone or fabric material when a room is instanced repeatedly on mobile.
+for col in (room, roof, foundation, balcony):
+    groups = {}
+    for obj in list(col.objects):
+        groups.setdefault(obj.data.materials[0].name, []).append(obj)
+    for mat_name, group in groups.items():
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in group:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = group[0]
+        bpy.ops.object.convert(target="MESH")
+        if len(group) > 1:
+            bpy.ops.object.join()
+        merged = bpy.context.object
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        merged.name = col.name.split("_")[-1] + "_" + mat_name
 
 props = collection("05_Props_Chest")
 box("Chest body", (0,0,0.25), (0.75,0.50,0.48), fabric, props)
@@ -146,7 +244,8 @@ for x in (-0.26,0.26):
     box("Chest band", (x,0,0.26), (0.07,0.54,0.52), gold, props)
 box("Chest lock", (0,-0.29,0.27), (0.14,0.07,0.18), gold, props)
 
-assets = [(hero,"Knight"),(enemy,"Goblin"),(room,"TowerRoom"),(roof,"TowerCrown"),(props,"Chest")]
+assets = [(hero,"Knight"),(enemy,"Goblin"),(room,"TowerRoom"),(roof,"TowerCrown"),(props,"Chest"),
+          (foundation,"TowerFoundation"),(balcony,"HeroBalcony")]
 for col, name in assets:
     bpy.ops.object.select_all(action="DESELECT")
     for obj in col.objects:
@@ -159,7 +258,7 @@ for col, name in assets:
         obj.asset_data.description = "Original Hero Wars starter asset. Editable geometry; exported to Unity Resources/Models."
 
 # Arrange an editable asset board after exporting everything with a local origin.
-for (col,name), offset in zip(assets, [(-3,0,0),(-1,0,0),(2,0,0),(2,0,2.0),(0,-1.7,0)]):
+for (col,name), offset in zip(assets, [(-3,0,0),(-1,0,0),(2,0,0),(2,0,1.65),(0,-1.7,0),(2,0,0),(-3,0,-0.10)]):
     for obj in col.objects:
         obj.location += Vector(offset)
 
@@ -187,14 +286,14 @@ for location, energy, size in [((1,-5,7),1300,6),((-5,-1,4),800,5),((3,4,6),1600
     light.rotation_euler=(Vector((0,0,1))-light.location).to_track_quat("-Z","Y").to_euler()
 
 text = bpy.data.texts.new("READ_ME")
-text.write("HERO WARS / EDITABLE ASSET LIBRARY\n\nCollections 01-05 contain original starter models.\n"
+text.write("HERO WARS / EDITABLE ASSET LIBRARY\n\nCollections 01-07 contain original starter models.\n"
            "Exported FBX files live in Assets/_Game/Resources/Models.\n"
            "The characters are starter meshes, not rigged production characters.\n"
            "Add future characters, environments, props and animation collections here.\n"
            "Keep Blender source outside Assets; Unity uses the exported FBX models.\n"
            "The generator script rebuilds this starter library; do not rerun over hand edits.\n")
 bpy.ops.object.select_all(action="DESELECT")
-scene.render.filepath = str(SOURCE / "AssetLibrary_Preview.png")
+scene.render.filepath = "//AssetLibrary_Preview.png"
 bpy.ops.wm.save_as_mainfile(filepath=str(SOURCE / "HeroWars_AssetLibrary.blend"), compress=True)
 bpy.ops.render.render(write_still=True)
 print("ASSET_LIBRARY_READY", str(SOURCE / "HeroWars_AssetLibrary.blend"))

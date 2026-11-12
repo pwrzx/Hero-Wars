@@ -55,7 +55,7 @@ namespace TowerTrials
         public HeroEquipment[] equipment = Array.Empty<HeroEquipment>();
         public HeroChest[] chests = Array.Empty<HeroChest>();
         public Sprite goldIcon, gemIcon, shopIcon, heroIcon, armorIcon, settingsIcon, dailyIcon;
-        public Sprite primaryButton, secondaryButton, slotFrame;
+        public Sprite primaryButton, secondaryButton, beveledButton, slotFrame;
         public Texture2D background;
         public Material weaponMaterial, cloakMaterial;
         public RuntimeAnimatorController armedAnimatorController;

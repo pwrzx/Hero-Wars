@@ -31,7 +31,7 @@ namespace TowerTrials
         private readonly TMP_Text[] slotLabels = new TMP_Text[3];
         private readonly UnityEngine.UI.Image[] slotIcons = new UnityEngine.UI.Image[3];
         private readonly TMP_Text[] categoryLabels = new TMP_Text[3];
-        private TMP_Text goldText, gemsText, title, subtitle, heroName, powerText, ownedText, dailyText;
+        private TMP_Text goldText, gemsText, title, heroName, powerText, ownedText, dailyText;
         private TMP_Text adventureText;
         private HeroPreview preview;
         private UnityEngine.UI.GridLayoutGroup inventoryGrid;
@@ -110,10 +110,6 @@ namespace TowerTrials
             title.rectTransform.anchorMax = Vector2.one; title.rectTransform.sizeDelta = new Vector2(-96, 128);
             title.rectTransform.anchoredPosition = new Vector2(48, -172);
             title.textWrappingMode = TextWrappingModes.NoWrap;
-            subtitle = Label("ScreenSubtitle", safe, "A legend in the making.", 30, Muted);
-            Place(subtitle.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(50, -292), new Vector2(970, 50));
-            subtitle.rectTransform.anchorMax = Vector2.one; subtitle.rectTransform.sizeDelta = new Vector2(-100, 50);
-            subtitle.rectTransform.anchoredPosition = new Vector2(50, -292);
             body = Rect("Pages", safe, new Vector2(0.045f, 0.115f), new Vector2(0.955f, 0.807f));
             heroRect = Rect("InteractiveHeroPortrait", body, new Vector2(0.01f, 0.33f), new Vector2(0.99f, 1.015f));
             var portrait = heroRect.gameObject.AddComponent<UnityEngine.UI.RawImage>(); portrait.raycastTarget = true;
@@ -300,16 +296,17 @@ namespace TowerTrials
             for (int i = 0; i < pages.Length; i++)
             {
                 pages[i].gameObject.SetActive(i == page);
-                navLabels[i].color = i == page ? Gold : Muted;
-                navFaces[i].color = Color.white;
+                bool active = i == page;
+                navLabels[i].color = active ? White : Muted;
+                ((GameUiShape)navFaces[i]).SetArtwork(active ? catalog.beveledButton : catalog.secondaryButton, true, active ? 4 : 1.5f);
                 var button = navFaces[i].GetComponentInParent<UnityEngine.UI.Button>();
                 var palette = button.colors;
-                palette.normalColor = i == page ? new Color32(35, 70, 72, 255) : new Color32(15, 41, 43, 255);
-                palette.selectedColor = palette.normalColor;
+                palette.normalColor = active ? new Color32(182, 116, 103, 255) : new Color32(192, 196, 191, 255);
+                palette.highlightedColor = active ? new Color32(218, 148, 127, 255) : Color.white;
+                palette.selectedColor = palette.highlightedColor;
                 button.colors = palette;
             }
             title.text = new[] { "Hero Center", "Customize", "Shop" }[page];
-            subtitle.text = new[] { "A legend in the making.", "Your hero. Your signature.", "Open a chest. Discover your next legend." }[page];
             heroRect.gameObject.SetActive(page != 2);
             if (page != 2)
             {

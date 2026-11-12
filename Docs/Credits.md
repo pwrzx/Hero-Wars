@@ -5,6 +5,8 @@
 | FREE Hero Pack | OlyPoly | Assets/Pack_Heros |
 | Medieval Fantasy Weapon Pack | Game Lair Studio | Assets/GameLair/MedievalFantasyWeaponPack |
 | 2D Game UI Kit | 300Mind | Assets/300Mind/2D Game UI Kit |
+| Germania One | John Vargas Beltrán, SIL Open Font License | Assets/_Game/Art/Fonts |
+| Oswald | The Oswald Project Authors, SIL Open Font License | Assets/300Mind/2D Game UI Kit/Fonts, notice in Assets/_Game/Art/Fonts |
 | Alegreya SC / Alegreya Sans | Huerta Tipografica, SIL Open Font License | Assets/_Game/Art/Fonts; license texts included |
 | Tower models and starter character geometry | Project Blender source and exports | ArtSource, Tools/Blender, Assets/_Game/Resources/Models |
 | Painted backdrop | Existing project art | Assets/_Game/Art/Backgrounds |

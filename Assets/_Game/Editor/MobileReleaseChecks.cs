@@ -55,7 +55,9 @@ public static class MobileReleaseChecks
             Check(recovered != null && recovered.version == 1, "Unknown save version recovers from backup");
         }
         finally { PlayerPrefs.DeleteKey(temporaryKey); PlayerPrefs.DeleteKey(temporaryKey + ".backup"); PlayerPrefs.Save(); }
-        Check(EditorBuildSettings.scenes.Length == 2 && EditorBuildSettings.scenes.All(scene => scene.enabled), "Only the two game scenes ship");
+        Check(EditorBuildSettings.scenes.All(scene => scene.enabled) && EditorBuildSettings.scenes.Select(scene => scene.path)
+            .SequenceEqual(new[] { StartupLoadingSetup.ScenePath, HeroCenterSetup.ScenePath, PrototypeSetup.ScenePath }),
+            "Startup loads first, followed by Hero Center and gameplay");
         Check(PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android) == MobileReleaseBuild.ApplicationId, "Android identity is configured");
         Check(PlayerSettings.GetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.iOS) == MobileReleaseBuild.ApplicationId, "iOS identity is configured");
         string report = "PASS: " + assertions + " release assertions. All 24 keeps validate; sequential unlocks, exact first-clear rewards, repeated-completion protection, progression serialization, primary-save recovery, shield-only equipment, scene list and mobile identifiers.\n";
