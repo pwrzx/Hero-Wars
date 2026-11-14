@@ -17,6 +17,8 @@ namespace TowerTrials
         public GameObject prefab;
         public Sprite icon;
         public int power;
+        public int PowerBonusPercent => starter || cloak || slot == EquipmentSlot.Skin ? 0 : HeroCenterCatalog.RarityPowerBonusPercent(rarity);
+        public string PowerBonusLabel => PowerBonusPercent > 0 ? "+" + PowerBonusPercent + "% power" : "";
         [Tooltip("Point inside the handle, in the equipment prefab's local coordinates.")]
         public Vector3 gripPoint;
     }
@@ -62,6 +64,18 @@ namespace TowerTrials
 
         public HeroEquipment Find(string id) => Array.Find(equipment, item => item.id == id);
         public static HeroCenterCatalog Load() => Resources.Load<HeroCenterCatalog>("HeroCenter/Catalog");
+
+        public static int RarityPowerBonusPercent(ItemRarity rarity)
+        {
+            switch (rarity)
+            {
+                case ItemRarity.Common: return 5;
+                case ItemRarity.Rare: return 10;
+                case ItemRarity.Epic: return 20;
+                case ItemRarity.Legendary: return 35;
+                default: return 0;
+            }
+        }
 
         public static Color RarityColor(ItemRarity rarity)
         {

@@ -9,6 +9,56 @@ namespace TowerTrials
     public sealed class HeroProfile
     {
         public const string SaveKey = "HeroWars.HeroProfile.v1";
+        public const int BaseStartingPower = 12, PowerUpgradePercent = 20, MaxPowerRank = 100;
+        public int powerRank;
+        public const int GoldUpgradePercent = 10, MaxGoldRank = 100;
+        public int goldRank;
+        public int GoldBonusPercent => Mathf.Clamp(goldRank, 0, MaxGoldRank) * GoldUpgradePercent;
+        public int GoldUpgradeCost => 200 + Mathf.Clamp(goldRank, 0, MaxGoldRank) * 100;
+        public int GoldWithBonus(int amount) => amount <= 0 ? 0 :
+            (int)Math.Min(1000000000L, ((long)amount * (100 + GoldBonusPercent) + 99) / 100);
+
+        public bool TryUpgradeGold()
+        {
+            if (goldRank >= MaxGoldRank || gold < GoldUpgradeCost) return false;
+            gold -= GoldUpgradeCost;
+            goldRank++;
+            return true;
+        }
+        public string combatRunId = "";
+        public int combatRewardedDefeats;
+        public long StartingPower => PowerAtRank(powerRank);
+        public long NextStartingPower => PowerAtRank(Math.Min(MaxPowerRank, powerRank + 1));
+        public int PowerUpgradeCost => 100 + Mathf.Clamp(powerRank, 0, MaxPowerRank) * 50;
+
+        private static long PowerAtRank(int rank)
+        {
+            long power = BaseStartingPower;
+            for (int i = 0; i < Mathf.Clamp(rank, 0, MaxPowerRank); i++)
+                power = checked((power * (100 + PowerUpgradePercent) + 99) / 100);
+            return power;
+        }
+
+        public bool TryUpgradePower()
+        {
+            if (powerRank >= MaxPowerRank || gold < PowerUpgradeCost) return false;
+            gold -= PowerUpgradeCost;
+            powerRank++;
+            return true;
+        }
+
+        // A checkpoint or rewarded revive cannot credit the same defeats twice.
+        public bool ClaimCombatReward(string runId, int stageIndex, int totalDefeated)
+        {
+            if (string.IsNullOrEmpty(runId) || stageIndex < 0 || stageIndex >= CampaignConfig.StageCount ||
+                totalDefeated < 0 || totalDefeated > CampaignConfig.TowersPerStage * 3) return false;
+            if (combatRunId != runId) { combatRunId = runId; combatRewardedDefeats = 0; }
+            if (totalDefeated <= combatRewardedDefeats) return false;
+            gold = (int)Math.Min(1000000000L, (long)gold +
+                (long)(totalDefeated - combatRewardedDefeats) * GoldWithBonus(CampaignConfig.DefeatGoldReward(stageIndex)));
+            combatRewardedDefeats = totalDefeated;
+            return true;
+        }
         public int version = 1, gold = 2500, gems = 150, level = 1;
         public string skin = "skin.nature", armor = "armor.oak", weapon = "weapon.sword1";
         public string dailyClaimUtc = "";
@@ -25,7 +75,7 @@ namespace TowerTrials
             profile.Repair(catalog);
             if (profile.progressionVersion == 0)
             {
-                RunSave previous = GameSave.Read<RunSave>("TowerTrials.Run.v1", value => value.version == 1);
+                RunSave previous = GameSave.Read<RunSave>("TowerTrials.Run.v1", value => RunSave.SupportsVersion(value.version));
                 if (previous != null)
                     for (int i = 0; i < Mathf.Clamp(previous.stageIndex, 0, CampaignConfig.StageCount - 1); i++)
                         if (!profile.completedStages.Contains(i)) profile.completedStages.Add(i);
@@ -40,6 +90,9 @@ namespace TowerTrials
             gold = Mathf.Clamp(gold, 0, 1000000000);
             gems = Mathf.Clamp(gems, 0, 1000000000);
             level = Mathf.Clamp(level, 1, 999);
+            powerRank = Mathf.Clamp(powerRank, 0, MaxPowerRank);
+            goldRank = Mathf.Clamp(goldRank, 0, MaxGoldRank);
+            combatRewardedDefeats = Mathf.Clamp(combatRewardedDefeats, 0, CampaignConfig.TowersPerStage * 3);
             if (owned == null) owned = new List<string>();
             var unique = new HashSet<string>();
             owned.RemoveAll(id => catalog.Find(id) == null || !unique.Add(id));
@@ -59,7 +112,7 @@ namespace TowerTrials
         {
             if (stageIndex < 0 || stageIndex >= CampaignConfig.StageCount || completedStages.Contains(stageIndex)) return false;
             completedStages.Add(stageIndex); completedStages.Sort();
-            gold = (int)Math.Min(1000000000L, (long)gold + CampaignConfig.GoldReward(stageIndex));
+            gold = (int)Math.Min(1000000000L, (long)gold + GoldWithBonus(CampaignConfig.GoldReward(stageIndex)));
             gems = (int)Math.Min(1000000000L, (long)gems + CampaignConfig.GemReward(stageIndex));
             level = 1 + completedStages.Count / 3;
             return true;
@@ -127,13 +180,21 @@ namespace TowerTrials
             return true;
         }
 
-        public int EquipmentPower(HeroCenterCatalog catalog)
+        public int EquipmentBonusPercent(HeroCenterCatalog catalog)
         {
             int total = 0;
-            foreach (EquipmentSlot slot in Enum.GetValues(typeof(EquipmentSlot)))
-                total += catalog.Find(Equipped(slot))?.power ?? 0;
+            foreach (EquipmentSlot slot in new[] { EquipmentSlot.Armor, EquipmentSlot.Weapon })
+            {
+                HeroEquipment item = catalog.Find(Equipped(slot));
+                if (item != null && item.slot == slot && Owns(item.id)) total += item.PowerBonusPercent;
+            }
             return total;
         }
+
+        public long CombatStartingPower(HeroCenterCatalog catalog) => ApplyEquipmentBonus(StartingPower, catalog);
+        public long NextCombatStartingPower(HeroCenterCatalog catalog) => ApplyEquipmentBonus(NextStartingPower, catalog);
+        private long ApplyEquipmentBonus(long power, HeroCenterCatalog catalog) =>
+            checked((power * (100 + EquipmentBonusPercent(catalog)) + 99) / 100);
 
         public void Save()
         {

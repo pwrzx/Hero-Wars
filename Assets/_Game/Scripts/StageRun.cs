@@ -16,8 +16,44 @@ namespace TowerTrials
         public string title;
         public long startingPower;
         public TowerDefinition[] towers;
+        public bool allowPowerWalls;
         public StageDefinition(string name, long power, params TowerDefinition[] sequence)
         { title = name; startingPower = power; towers = sequence; }
+
+        // Taking the weakest remaining enemy first minimizes the starting power needed.
+        public long MinimumStartingPower
+        {
+            get
+            {
+                long gained = 0, required = 1;
+                foreach (TowerDefinition tower in towers)
+                {
+                    var sorted = (long[])tower.enemies.Clone();
+                    Array.Sort(sorted);
+                    foreach (long enemy in sorted)
+                    {
+                        required = Math.Max(required, checked(enemy - gained + 1));
+                        gained = checked(gained + enemy);
+                    }
+                }
+                return required;
+            }
+        }
+
+        public string Signature
+        {
+            get
+            {
+                var text = new System.Text.StringBuilder(startingPower.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                text.Append(allowPowerWalls ? ":walls" : ":puzzle");
+                foreach (TowerDefinition tower in towers)
+                {
+                    text.Append('|');
+                    foreach (long enemy in tower.enemies) text.Append(enemy.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',');
+                }
+                return text.ToString();
+            }
+        }
 
         // Check every reachable partial clear, including power gained in other rooms.
         // This will also be the acceptance gate for the future on-device generator.
@@ -25,8 +61,8 @@ namespace TowerTrials
         {
             if (startingPower <= 0 || towers == null || towers.Length == 0)
                 throw new ArgumentException("A stage needs positive hero power and at least one tower.");
-            long entryPower = startingPower;
-            var unique = new HashSet<long> { startingPower };
+            var unique = new HashSet<long>();
+            if (!allowPowerWalls) unique.Add(startingPower);
             foreach (TowerDefinition tower in towers)
             {
                 if (tower?.enemies == null || tower.enemies.Length == 0 || tower.enemies.Length > 8)
@@ -34,6 +70,10 @@ namespace TowerTrials
                 foreach (long enemy in tower.enemies)
                     if (enemy <= 0 || !unique.Add(enemy))
                         throw new ArgumentException("Enemy powers must be positive and distinct within a stage.");
+            }
+            long entryPower = allowPowerWalls ? Math.Max(startingPower, MinimumStartingPower) : startingPower;
+            foreach (TowerDefinition tower in towers)
+            {
                 int fullMask = (1 << tower.enemies.Length) - 1;
                 var visited = new HashSet<int>();
                 var pending = new Stack<int>();
@@ -48,7 +88,7 @@ namespace TowerTrials
                     for (int i = 0; i < tower.enemies.Length; i++)
                     {
                         if ((mask & (1 << i)) != 0) continue;
-                        if (current == tower.enemies[i])
+                        if (!allowPowerWalls && current == tower.enemies[i])
                             throw new ArgumentException("Equal-power encounter after power gain.");
                         if (current > tower.enemies[i]) pending.Push(mask | (1 << i));
                     }
@@ -62,12 +102,22 @@ namespace TowerTrials
     public enum AttackOutcome { Invalid, Defeated, TowerCleared, StageCleared, Lost }
 
     [Serializable]
+    public sealed class RewardedReviveSave
+    {
+        public int[] clearedMasks;
+    }
+
+    [Serializable]
     public sealed class RunSave
     {
-        public int version = 1;
+        public int version = 3;
         public int stageIndex;
         public int[] clearedMasks;
         public bool failed;
+        public long startingPower;
+        public string definitionSignature, runId;
+        public RewardedReviveSave[] rewardedRevives;
+        public static bool SupportsVersion(int value) => value >= 1 && value <= 3;
     }
 
     // Unity-independent game rules: presentation never calculates or awards power.
@@ -75,16 +125,47 @@ namespace TowerTrials
     {
         public StageDefinition Definition { get; }
         public long Power { get; private set; }
+        public long StartingPower { get; }
+        public string RunId { get; private set; }
         public int TowerIndex { get; private set; }
         public bool Failed { get; private set; }
         public bool Complete => TowerIndex == Definition.towers.Length;
         private readonly int[] clearedMasks;
+        private readonly List<RewardedReviveSave> rewardedRevives = new List<RewardedReviveSave>();
 
-        public StageRun(StageDefinition definition)
+        public int DefeatedCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (int savedMask in clearedMasks)
+                    for (int mask = savedMask; mask != 0; mask &= mask - 1) count++;
+                return count;
+            }
+        }
+
+        public bool PowerBlocked
+        {
+            get
+            {
+                if (Complete) return false;
+                for (int room = 0; room < Definition.towers[TowerIndex].enemies.Length; room++)
+                    if (!IsDefeated(TowerIndex, room) && Power > Definition.towers[TowerIndex].enemies[room]) return false;
+                return true;
+            }
+        }
+
+        public StageRun(StageDefinition definition, long? startingPower = null)
         {
             definition.Validate();
             Definition = definition;
-            Power = definition.startingPower;
+            StartingPower = startingPower ?? definition.startingPower;
+            if (StartingPower <= 0) throw new ArgumentException("Hero power must be positive.");
+            long maximum = StartingPower;
+            foreach (TowerDefinition tower in definition.towers)
+                foreach (long enemy in tower.enemies) maximum = checked(maximum + enemy);
+            Power = StartingPower;
+            RunId = Guid.NewGuid().ToString("N");
             clearedMasks = new int[definition.towers.Length];
         }
 
@@ -94,6 +175,25 @@ namespace TowerTrials
         public bool TryRevive()
         {
             if (!Failed || Complete) return false;
+            Failed = false;
+            return true;
+        }
+
+        public bool TryReviveWithPowerBoost()
+        {
+            if (!Failed || Complete) return false;
+            long boosted;
+            try
+            {
+                boosted = checked(Power + Power / 5 + (Power % 5 == 0 ? 0 : 1));
+                long maximum = boosted;
+                for (int t = 0; t < Definition.towers.Length; t++)
+                    for (int r = 0; r < Definition.towers[t].enemies.Length; r++)
+                        if (!IsDefeated(t, r)) maximum = checked(maximum + Definition.towers[t].enemies[r]);
+            }
+            catch (OverflowException) { return false; }
+            rewardedRevives.Add(new RewardedReviveSave { clearedMasks = (int[])clearedMasks.Clone() });
+            Power = boosted;
             Failed = false;
             return true;
         }
@@ -118,27 +218,54 @@ namespace TowerTrials
         }
 
         public RunSave Save(int stageIndex) => new RunSave
-        { stageIndex = stageIndex, clearedMasks = (int[])clearedMasks.Clone(), failed = Failed };
+        { stageIndex = stageIndex, clearedMasks = (int[])clearedMasks.Clone(), failed = Failed,
+            startingPower = StartingPower, definitionSignature = Definition.Signature, runId = RunId,
+            rewardedRevives = rewardedRevives.ConvertAll(value => new RewardedReviveSave { clearedMasks = (int[])value.clearedMasks.Clone() }).ToArray() };
 
         public static bool TryRestore(StageDefinition definition, RunSave save, out StageRun run)
         {
             run = new StageRun(definition);
-            if (save == null || save.version != 1 || save.clearedMasks == null ||
+            if (save == null || !RunSave.SupportsVersion(save.version) || save.clearedMasks == null ||
                 save.clearedMasks.Length != definition.towers.Length) return false;
-            // Replay legal defeats, rather than trusting a saved power value or tower index.
-            for (int t = 0; t < definition.towers.Length; t++)
+            if (save.version == 1 && definition.allowPowerWalls) return false;
+            if (save.version >= 2)
             {
-                int mask = save.clearedMasks[t];
-                int validBits = (1 << definition.towers[t].enemies.Length) - 1;
+                if (save.startingPower <= 0 || save.definitionSignature != definition.Signature ||
+                    string.IsNullOrEmpty(save.runId)) return false;
+                try { run = new StageRun(definition, save.startingPower); }
+                catch (OverflowException) { return false; }
+                run.RunId = save.runId;
+            }
+            if (save.version == 3)
+            {
+                if (save.rewardedRevives == null) return false;
+                foreach (RewardedReviveSave reward in save.rewardedRevives)
+                    if (reward == null || !ReplayToMasks(run, reward.clearedMasks) ||
+                        !ReplayDefeat(run) || !run.TryReviveWithPowerBoost()) return false;
+            }
+            // Replay the exact cleared-room checkpoint before each reward, then remaining kills.
+            if (!ReplayToMasks(run, save.clearedMasks)) return false;
+            if (save.failed && !ReplayDefeat(run)) return false;
+            return true;
+        }
+
+        private static bool ReplayToMasks(StageRun run, int[] masks)
+        {
+            if (masks == null || masks.Length != run.Definition.towers.Length) return false;
+            for (int t = 0; t < run.Definition.towers.Length; t++)
+            {
+                int mask = masks[t];
+                int validBits = (1 << run.Definition.towers[t].enemies.Length) - 1;
                 if (mask < 0 || (mask & ~validBits) != 0) return false;
-                int remaining = mask;
+                if ((mask & run.clearedMasks[t]) != run.clearedMasks[t]) return false;
+                int remaining = mask & ~run.clearedMasks[t];
                 while (remaining != 0)
                 {
                     bool advanced = false;
-                    for (int r = 0; r < definition.towers[t].enemies.Length; r++)
+                    for (int r = 0; r < run.Definition.towers[t].enemies.Length; r++)
                     {
                         if ((remaining & (1 << r)) == 0 || t != run.TowerIndex ||
-                            run.Power <= definition.towers[t].enemies[r]) continue;
+                            run.Power <= run.Definition.towers[t].enemies[r]) continue;
                         run.Attack(t, r);
                         remaining &= ~(1 << r);
                         advanced = true;
@@ -146,17 +273,16 @@ namespace TowerTrials
                     if (!advanced) return false;
                 }
             }
-            if (save.failed)
-            {
-                if (run.Complete) return false;
-                bool canFail = false;
-                for (int r = 0; r < definition.towers[run.TowerIndex].enemies.Length; r++)
-                    canFail |= !run.IsDefeated(run.TowerIndex, r) &&
-                               definition.towers[run.TowerIndex].enemies[r] > run.Power;
-                if (!canFail) return false;
-                run.Failed = true;
-            }
             return true;
+        }
+
+        private static bool ReplayDefeat(StageRun run)
+        {
+            if (run.Complete || run.Failed) return false;
+            for (int r = 0; r < run.Definition.towers[run.TowerIndex].enemies.Length; r++)
+                if (!run.IsDefeated(run.TowerIndex, r) && run.Definition.towers[run.TowerIndex].enemies[r] >= run.Power)
+                    return run.Attack(run.TowerIndex, r) == AttackOutcome.Lost;
+            return false;
         }
     }
 }

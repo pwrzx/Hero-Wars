@@ -29,7 +29,7 @@ namespace TowerTrials
         private RectTransform canvasRect, safeArea, resultPanel;
         private RectTransform pausePanel, pauseCard;
         private RectTransform resultCard;
-        private TMP_Text powerLabel, hint, resultTitle, resultDetail;
+        private TMP_Text powerLabel, resultTitle, resultDetail;
         private TMP_Text reviveDetail, reviveStatus;
         private GameButton reviveButton;
         private RewardedContinueTicket reviveTicket;
@@ -85,22 +85,24 @@ namespace TowerTrials
             GamePreferences.Apply();
             if (campaign == null || campaign.stages == null || campaign.stages.Length == 0)
                 throw new InvalidOperationException("Assign a campaign to TowerGameController.");
-            RunSave saved = GameSave.Read<RunSave>(SaveKey, value => value.version == 1);
-            HeroProfile profile = HeroProfile.Load(HeroCenterCatalog.Load());
+            RunSave saved = GameSave.Read<RunSave>(SaveKey, value => RunSave.SupportsVersion(value.version));
+            HeroCenterCatalog catalog = HeroCenterCatalog.Load();
+            HeroProfile profile = HeroProfile.Load(catalog);
+            long startingPower = profile.CombatStartingPower(catalog);
             if (PlayerPrefs.HasKey(CampaignConfig.SelectedStageKey))
             {
                 int selected = Mathf.Clamp(PlayerPrefs.GetInt(CampaignConfig.SelectedStageKey), 0, profile.HighestUnlockedStage);
                 PlayerPrefs.DeleteKey(CampaignConfig.SelectedStageKey);
-                saved = new StageRun(campaign.stages[selected]).Save(selected);
+                saved = new StageRun(campaign.stages[selected], startingPower).Save(selected);
             }
             else if (saved == null)
-                saved = new StageRun(campaign.stages[Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1)])
+                saved = new StageRun(campaign.stages[Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1)], startingPower)
                     .Save(Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1));
             stageIndex = saved == null ? 0 : Mathf.Clamp(saved.stageIndex, 0, campaign.stages.Length - 1);
             rewardGranted = false;
-            if (saved == null || saved.stageIndex != stageIndex ||
+            if (saved == null || saved.stageIndex != stageIndex || saved.startingPower != startingPower ||
                 !StageRun.TryRestore(campaign.stages[stageIndex], saved, out var restored))
-                Run = new StageRun(campaign.stages[stageIndex]);
+                Run = new StageRun(campaign.stages[stageIndex], startingPower);
             else Run = restored;
             SaveProgress();
             RebuildPresentation();
@@ -126,7 +128,7 @@ namespace TowerTrials
             UpdateRewardedContinue();
             if (!preview && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                if (Run != null && (Run.Complete || Run.Failed)) HeroCenterController.ReturnToHeroCenter();
+                if (Run != null && (Run.Complete || Run.Failed)) ReturnToMenu();
                 else SetPaused(!paused);
             }
         }
@@ -321,15 +323,6 @@ namespace TowerTrials
                 progress.Add(bar.GetComponent<UnityEngine.UI.Image>());
             }
 
-            var footer = Panel("Footer", safeArea, Vector2.zero, new Vector2(1, 0),
-                new Vector2(32, 28), new Vector2(-32, 169), new Color32(33, 52, 57, 246));
-            var gesture = Text("Gesture", footer, "Swipe toward a room", 40, Paper, GameTextRole.Action);
-            Place(gesture.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -8), new Vector2(940, 58));
-            gesture.alignment = TextAlignmentOptions.Center;
-            hint = Text("Hint", footer, "", 32, Paper);
-            Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(940, 62));
-            hint.alignment = TextAlignmentOptions.Center;
-
             resultPanel = Panel("ResultOverlay", safeArea, Vector2.zero, Vector2.one,
                 Vector2.zero, Vector2.zero, new Color(0.01f, 0.035f, 0.05f, 0.87f));
             resultPanel.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
@@ -345,10 +338,10 @@ namespace TowerTrials
             continueButton = Button("Continue", card, "", Continue, true);
             continueLabel = continueButton.GetComponentInChildren<TMP_Text>();
             Place(continueButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 56), new Vector2(640, 112));
-            reviveDetail = Text("ReviveBenefit", card, "Keep your power and cleared rooms.", 34, Paper);
+            reviveDetail = Text("ReviveBenefit", card, "Keep cleared rooms. Gain 20% current power.", 34, Paper);
             reviveDetail.alignment = TextAlignmentOptions.Center;
             Place(reviveDetail.rectTransform, Vector2.one * 0.5f, Vector2.one * 0.5f, new Vector2(0, 100), new Vector2(780, 84));
-            reviveButton = GameUi.Button("WatchAdContinue", card, "Watch ad & continue", RequestRewardedContinue, true, 38);
+            reviveButton = GameUi.Button("WatchAdContinue", card, "Watch ad / +20% power", RequestRewardedContinue, true, 38);
             Place((RectTransform)reviveButton.transform, Vector2.one * 0.5f, Vector2.one * 0.5f, new Vector2(0, -18), new Vector2(740, 144));
             reviveStatus = Text("ReviveStatus", card, "", 29, GameUi.Muted);
             reviveStatus.alignment = TextAlignmentOptions.Center;
@@ -410,7 +403,6 @@ namespace TowerTrials
             if (delta.sqrMagnitude < threshold * threshold || delta.x < threshold * 0.5f)
             {
                 SelectRoom(-1);
-                hint.text = "Swipe right toward an enemy room.";
                 return false;
             }
             int room = FindRoom(end);
@@ -444,12 +436,6 @@ namespace TowerTrials
             if (Run.Complete) return;
             TowerView tower = towers[Run.TowerIndex];
             for (int i = 0; i < tower.markers.Length; i++) tower.markers[i].SetActive(i == room);
-            if (room >= 0)
-            {
-                long enemy = Run.Definition.towers[Run.TowerIndex].enemies[room];
-                hint.text = "Enemy " + GameUiTheme.Number(enemy) + (Run.Power > enemy ? ": ready to strike" : ": too strong");
-                hint.color = Run.Power > enemy ? new Color(0.55f, 1, 0.76f) : new Color(1, 0.55f, 0.45f);
-            }
         }
 
         private IEnumerator Attack(int room)
@@ -462,7 +448,6 @@ namespace TowerTrials
             long previousPower = Run.Power;
             Vector3 home = hero.position;
             Vector3 destination = enemy.position + new Vector3(-0.63f, 0.08f, -0.25f);
-            hint.text = "";
             yield return PoseHero(CombatPose.Anticipate, 0.055f);
             yield return MoveHero(home, destination, attackDuration, 0.85f);
             feedback.Landing(destination);
@@ -481,7 +466,6 @@ namespace TowerTrials
                 for (float time = 0; time < 0.18f; time += Time.deltaTime)
                 { heroMotion.Pose(CombatPose.Recoil, time / 0.18f); yield return null; }
                 enemyMotion.Release();
-                hint.text = "Too strong. Find a different order.";
                 yield return MoveHero(destination, home, attackDuration, 0.3f);
                 heroMotion.Release();
                 SetBusy(false);
@@ -510,8 +494,6 @@ namespace TowerTrials
             enemy.gameObject.SetActive(false);
             tower.rooms[room].gameObject.SetActive(false);
             Coroutine settling = StartCoroutine(SettleTower(index));
-            hint.text = "+" + GameUiTheme.Number(gained) + " POWER";
-            hint.color = Gold;
             yield return MoveHero(destination, home, attackDuration, 0.45f);
             feedback.Landing(home);
             combatAudio.Play(CombatSound.Power);
@@ -521,7 +503,6 @@ namespace TowerTrials
             yield return settling;
             if (outcome == AttackOutcome.TowerCleared || outcome == AttackOutcome.StageCleared)
             {
-                hint.text = "TOWER CLEARED";
                 yield return CollapseAndAdvance(index);
             }
             RefreshHud();
@@ -656,7 +637,8 @@ namespace TowerTrials
             SetPaused(false);
             StopAllCoroutines();
             rewardGranted = false;
-            Run = new StageRun(campaign.stages[stageIndex]);
+            HeroCenterCatalog catalog = HeroCenterCatalog.Load();
+            Run = new StageRun(campaign.stages[stageIndex], HeroProfile.Load(catalog).CombatStartingPower(catalog));
             RebuildPresentation();
             SaveProgress();
         }
@@ -664,16 +646,26 @@ namespace TowerTrials
         public void Continue()
         {
             if (busy || (!Run.Complete && !Run.Failed)) return;
-            if (Run.Complete) stageIndex = (stageIndex + 1) % campaign.stages.Length;
+            if (Run.Failed) { ReturnToMenu(); return; }
+            stageIndex = (stageIndex + 1) % campaign.stages.Length;
             RestartStage();
+        }
+
+        private void ReturnToMenu()
+        {
+            CancelRewardedContinue();
+            if (Run != null && Run.Failed)
+            {
+                PlayerPrefs.SetInt(CampaignConfig.SelectedStageKey, stageIndex);
+                PlayerPrefs.Save();
+            }
+            HeroCenterController.ReturnToHeroCenter();
         }
 
         private void RefreshHud()
         {
             powerLabel.text = GameUiTheme.Number(Run.Power);
             SizeHeroBadge(Run.Power);
-            hint.text = "Your power: " + GameUiTheme.Number(Run.Power) + ". Choose a lower red number.";
-            hint.color = Paper;
             for (int i = 0; i < progress.Count; i++)
                 progress[i].color = i < Run.TowerIndex ? Gold : i == Run.TowerIndex ? new Color(0.24f, 0.69f, 0.64f) : new Color(0.17f, 0.29f, 0.32f);
         }
@@ -692,12 +684,12 @@ namespace TowerTrials
             resultPanel.gameObject.SetActive(true);
             resultTitle.text = complete ? "Stage cleared" : "Hero defeated";
             resultDetail.text = complete
-                ? (rewardGranted ? "+" + CampaignConfig.GoldReward(stageIndex) + " gold   /   +" + CampaignConfig.GemReward(stageIndex) + " gems\n" : "First-clear reward already saved.\n") +
+                ? (rewardGranted ? "+" + HeroProfile.Load(HeroCenterCatalog.Load()).GoldWithBonus(CampaignConfig.GoldReward(stageIndex)) + " gold   /   +" + CampaignConfig.GemReward(stageIndex) + " gems\n" : "First-clear reward already saved.\n") +
                     (stageIndex == campaign.stages.Length - 1 ? "Journey complete. Every keep is yours!" : "Next keep unlocked. Final power: " + GameUiTheme.Number(Run.Power))
                 : "That enemy was too powerful.\nChoose how to continue.";
-            continueLabel.text = complete ? (stageIndex == campaign.stages.Length - 1 ? "Play again" : "Next stage") : "Retry";
+            continueLabel.text = complete ? (stageIndex == campaign.stages.Length - 1 ? "Play again" : "Next stage") : "Main menu";
             ((GameButton)continueButton).SetPrimary(complete);
-            ((GameButton)continueButton).SetRestartIcon(!complete || stageIndex == campaign.stages.Length - 1);
+            ((GameButton)continueButton).SetRestartIcon(complete && stageIndex == campaign.stages.Length - 1);
             reviveMessage = null;
             RefreshRewardedContinue();
             if (!preview)
@@ -721,7 +713,7 @@ namespace TowerTrials
                 reviveRun = Run;
                 reviveMessage = null;
             }
-            else reviveMessage = "No ad available right now. You can retry.";
+            else reviveMessage = "No ad available right now. You can return to the main menu.";
             RefreshRewardedContinue();
         }
 
@@ -734,17 +726,16 @@ namespace TowerTrials
                 reviveTicket = null; reviveRun = null;
                 if (Run == expectedRun && Run.Failed)
                 {
-                    if (result == RewardedContinueResult.Rewarded && Run.TryRevive())
+                    if (result == RewardedContinueResult.Rewarded && Run.TryReviveWithPowerBoost())
                     {
                         StopAllCoroutines();
                         SetPaused(false);
                         SaveProgress();
                         RebuildPresentation();
-                        hint.text = "Back in the battle. Choose a weaker enemy.";
                     }
                     else reviveMessage = result == RewardedContinueResult.Skipped
-                        ? "Ad not finished. Try another ad or retry."
-                        : "Ad unavailable. You can try again or retry.";
+                        ? "Ad not finished. No power boost was granted."
+                        : "Ad unavailable. Return to the main menu or try again.";
                 }
             }
             if (Run != null && Run.Failed && resultPanel != null && resultPanel.gameObject.activeSelf)
@@ -760,7 +751,7 @@ namespace TowerTrials
             var retry = (GameButton)continueButton;
             if (retry.IsPrimary == available) retry.SetPrimary(!available);
             reviveStatus.text = waiting ? "Waiting for the ad to finish..." : reviveMessage ??
-                (available ? "Finish the ad to continue your run." : "No ad available right now. You can retry.");
+                (available ? "Finish the ad to gain 20% power and continue." : "No ad available right now. You can return to the main menu.");
         }
 
         private void CancelRewardedContinue()
@@ -791,12 +782,14 @@ namespace TowerTrials
         private void SaveProgress()
         {
             if (preview || Run == null) return;
-            GameSave.Write(SaveKey, Run.Save(stageIndex));
+            HeroProfile profile = HeroProfile.Load(HeroCenterCatalog.Load());
+            bool profileChanged = profile.ClaimCombatReward(Run.RunId, stageIndex, Run.DefeatedCount);
             if (Run.Complete)
             {
-                HeroProfile profile = HeroProfile.Load(HeroCenterCatalog.Load());
-                if (profile.ClaimStageReward(stageIndex)) { profile.Save(); rewardGranted = true; }
+                if (profile.ClaimStageReward(stageIndex)) { profileChanged = true; rewardGranted = true; }
             }
+            if (profileChanged) profile.Save();
+            GameSave.Write(SaveKey, Run.Save(stageIndex));
         }
         private void OnApplicationPause(bool background)
         {

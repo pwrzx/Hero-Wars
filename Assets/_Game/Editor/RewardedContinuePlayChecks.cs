@@ -17,7 +17,7 @@ public static class RewardedContinuePlayChecks
     private static TowerGameController game;
     private static RewardedContinueChecks.Provider provider;
     private static StageRun failedRun;
-    private static int step, frame, checks, attacks, gold, gems;
+    private static int step, frame, checks, attacks, gold, gems, successfulDefeats;
     private static long checkpointPower;
     private static int[] checkpointMasks;
     private static double deadline;
@@ -40,6 +40,7 @@ public static class RewardedContinuePlayChecks
         }
         SessionState.SetBool(Prefix + "Active", true);
         var profile = HeroProfile.Load(HeroCenterCatalog.Load()); gold = profile.gold; gems = profile.gems;
+        profile.powerRank = 0; profile.goldRank = 0; profile.Save(); successfulDefeats = 0;
         RewardedContinueAds.Register(null);
         typeof(TowerGameController).GetField("stageIndex", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(game, 0);
         game.SetPaused(false); game.RestartStage();
@@ -63,7 +64,8 @@ public static class RewardedContinuePlayChecks
                 case 2:
                     Check(game.Run.Failed, "Stronger enemy produces the death screen");
                     CaptureCheckpoint();
-                    Check(!Control("WatchAdContinue").interactable && Control("Continue").interactable, "Reserved ad option is unavailable while Retry remains usable");
+                    Check(!Control("WatchAdContinue").interactable && Control("Continue").interactable &&
+                        Control("Continue").GetComponentInChildren<TMPro.TMP_Text>().text == "Main menu", "Unavailable ads leave Main menu usable");
                     game.RequestRewardedContinue(); Check(game.Run.Failed, "No provider cannot grant a free continue");
                     CheckUiBounds();
                     ScreenCapture.CaptureScreenshot("Artifacts/Death-ContinueUnavailable.png");
@@ -79,12 +81,12 @@ public static class RewardedContinuePlayChecks
                     CheckUnchanged("Skipping"); Click("WatchAdContinue");
                     provider.callbacks[1](RewardedContinueResult.Failed); step++; break;
                 case 5:
-                    CheckUnchanged("Failed ad"); Click("WatchAdContinue"); Click("Continue");
-                    Check(game.Run != failedRun && !game.Run.Failed && game.Run.Power == game.Run.Definition.startingPower, "Retry creates a fresh run");
+                    CheckUnchanged("Failed ad"); Click("WatchAdContinue"); game.RestartStage();
+                    Check(game.Run != failedRun && !game.Run.Failed && game.Run.Power == game.Run.StartingPower, "Restart creates a fresh run");
                     step++; break;
                 case 6:
                     provider.callbacks[2](RewardedContinueResult.Rewarded);
-                    Check(!game.Run.Failed && game.Run.Power == game.Run.Definition.startingPower, "Reward from abandoned run cannot affect Retry");
+                    Check(!game.Run.Failed && game.Run.Power == game.Run.StartingPower, "Reward from abandoned run cannot affect Retry");
                     Swipe(FindRoom(false)); step++; break;
                 case 7: Swipe(FindRoom(true)); step++; break;
                 case 8: CaptureCheckpoint(); Check(game.Run.Failed, "Second death still offers a continue"); step++; break;
@@ -93,17 +95,19 @@ public static class RewardedContinuePlayChecks
                     Task.Run(() => { provider.callbacks[3](RewardedContinueResult.Rewarded); provider.callbacks[3](RewardedContinueResult.Rewarded); }).GetAwaiter().GetResult();
                     step++; break;
                 case 10:
-                    Check(game.Run == failedRun && !game.Run.Failed && game.Run.Power == checkpointPower, "Confirmed reward revives the same checkpoint exactly once");
+                    long boostedPower = checkpointPower + checkpointPower / 5 + (checkpointPower % 5 == 0 ? 0 : 1);
+                    Check(game.Run == failedRun && !game.Run.Failed && game.Run.Power == boostedPower, "Confirmed reward revives the same checkpoint with exactly 20% more current power");
                     Check(game.Run.Save(0).clearedMasks.SequenceEqual(checkpointMasks), "Cleared rooms stay cleared after revive");
                     var overlay = game.GetComponentsInChildren<RectTransform>(true).Single(rect => rect.name == "ResultOverlay");
                     Check(!overlay.gameObject.activeSelf, "Death presentation is dismissed");
                     var saved = GameSave.Read<RunSave>("TowerTrials.Run.v1");
-                    Check(StageRun.TryRestore(game.Run.Definition, saved, out var restored) && !restored.Failed && restored.Power == checkpointPower, "Revived checkpoint is saved immediately");
+                    Check(StageRun.TryRestore(game.Run.Definition, saved, out var restored) && !restored.Failed && restored.Power == boostedPower, "Boosted checkpoint is saved immediately");
                     Swipe(FindRoom(false)); step++; break;
                 case 11:
                     Check(!game.Run.Failed && game.Run.Power > checkpointPower, "Revived hero accepts a new legal pointer attack");
                     var profile = HeroProfile.Load(HeroCenterCatalog.Load());
-                    Check(profile.gold == gold && profile.gems == gems, "Ad continue never duplicates currency or stage rewards");
+                    Check(profile.gold == gold + successfulDefeats * CampaignConfig.DefeatGoldReward(game.StageIndex) && profile.gems == gems,
+                        "Ad continue credits only new kills and never duplicates currency or stage rewards");
                     Finish(null); return;
             }
             frame = Time.frameCount;
@@ -137,6 +141,7 @@ public static class RewardedContinuePlayChecks
     }
     private static void Swipe(int room)
     {
+        if (game.Run.Power > game.Run.Definition.towers[game.Run.TowerIndex].enemies[room]) successfulDefeats++;
         var input = UnityEngine.Object.FindAnyObjectByType<SwipeAttackInput>(); Vector2 end = game.EnemyScreenPosition(room);
         var pointer = new PointerEventData(EventSystem.current) { position = end - Vector2.right * Screen.width * 0.4f, pointerId = -1 };
         ExecuteEvents.Execute(input.gameObject, pointer, ExecuteEvents.pointerDownHandler);
@@ -163,7 +168,7 @@ public static class RewardedContinuePlayChecks
     private static void Finish(Exception error)
     {
         EditorApplication.update -= Tick; Restore();
-        string report = error == null ? "PASS: " + checks + " checks, " + attacks + " real pointer attacks. Death-screen ad slot, no-provider Retry, skipped/failed ads, cancelled/stale and duplicate rewards, worker-thread confirmation, retained power/cleared rooms, saved revival and post-revive combat. Editor-only provider; no real ads. Original saves restored.\n" : "FAIL: " + error;
+        string report = error == null ? "PASS: " + checks + " checks, " + attacks + " real pointer attacks. Death-screen ad slot, Main menu fallback, skipped/failed ads, cancelled/stale and duplicate rewards, worker-thread confirmation, 20% boosted power with cleared rooms retained, saved revival and post-revive combat. Editor-only provider; no real ads. Original saves restored.\n" : "FAIL: " + error;
         File.WriteAllText("Artifacts/RewardedContinuePlayValidation.txt", report);
         if (error != null) Debug.LogException(error); else Debug.Log(report);
         if (Application.isPlaying) SceneManager.LoadSceneAsync("HeroCenter");

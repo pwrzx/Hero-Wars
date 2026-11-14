@@ -1,0 +1,1 @@
+PASS: 604 defeat/economy assertions. Attack-required defeat, 20% rewarded revival, repeated rewards and exact checkpoint timing, old saves, rounding, overflow, gold training, all-level kill/clear income and reward protection.

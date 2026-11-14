@@ -24,7 +24,7 @@ public static class PrototypeChecks
         {
             exploredStates.Clear();
             stage.Validate();
-            Explore(stage, new StageRun(stage));
+            Explore(stage, new StageRun(stage, Math.Max(stage.startingPower, stage.MinimumStartingPower)));
         }
         // Fixed rule fixture stays independent of editable balancing numbers.
         var fixture = new StageDefinition("Combat fixture", 20,
@@ -44,10 +44,10 @@ public static class PrototypeChecks
         var finished = new StageRun(new StageDefinition("Completed revive fixture", 20, new TowerDefinition(4)));
         finished.Attack(0, 0);
         Check(!finished.TryRevive() && finished.Complete && finished.Power == 24, "Completed stages cannot be revived");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
         Check(!StageRun.TryRestore(fixture, new RunSave { version = 22, clearedMasks = new[] { 0, 0, 0 } }, out _), "Unknown save version is rejected");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
         ExpectInvalid(new StageDefinition("Tie after a kill", 20, new TowerDefinition(4, 24)));
         ExpectInvalid(new StageDefinition("Blocked stage", 20, new TowerDefinition(21, 30)));
         ExpectInvalid(new StageDefinition("Repeated powers", 20, new TowerDefinition(4, 4)));
@@ -77,8 +77,8 @@ public static class PrototypeChecks
         {
             if (run.IsDefeated(run.TowerIndex, room)) continue;
             long enemy = stage.towers[run.TowerIndex].enemies[room];
-            Check(enemy != run.Power, "No reachable equal-power encounter");
-            if (enemy > run.Power) continue;
+            if (!stage.allowPowerWalls) Check(enemy != run.Power, "No reachable equal-power encounter");
+            if (enemy >= run.Power) continue;
             hasWinningMove = true;
             Check(StageRun.TryRestore(stage, snapshot, out var branch), "Restore branch");
             int previousTower = branch.TowerIndex;
@@ -121,7 +121,7 @@ public static class PrototypeChecks
         if (playGame == null || playGame.Run == null) throw new InvalidOperationException("Game has not started.");
         playGame.RestartStage();
         attackedRoom = null;
-        expectedFinalPower = playGame.Run.Definition.startingPower;
+        expectedFinalPower = playGame.Run.StartingPower;
         foreach (TowerDefinition tower in playGame.Run.Definition.towers)
             foreach (long power in tower.enemies) expectedFinalPower = checked(expectedFinalPower + power);
         failureRoom = -1;
@@ -158,10 +158,20 @@ public static class PrototypeChecks
             if (!checkedFailure)
             {
                 if (!playGame.Run.Failed) { SendPointerSwipe(failureRoom); return; }
-                Check(playGame.Run.Power == playGame.Run.Definition.startingPower, "Failure grants no power");
-                playGame.Continue();
+                Check(playGame.Run.Power == playGame.Run.StartingPower, "Failure grants no power");
+                playGame.RestartStage();
                 Check(!playGame.Run.Failed, "Retry returns to a playable state");
                 checkedFailure = true;
+            }
+            if (playGame.Run.PowerBlocked)
+            {
+                Check(playGame.Run.Definition.allowPowerWalls, "Only progression levels allow a power wall");
+                Check(StageRun.TryRestore(playGame.Run.Definition, playGame.Run.Save(0), out var blocked) && blocked.PowerBlocked,
+                    "Pointer progression stops at a persistent power wall");
+                EditorApplication.update -= TickPlaytest;
+                File.WriteAllText("Artifacts/Playtest.txt", "PASS: pointer attacks, animation and feedback reached the intended power wall after " + swipeCount +
+                    " kills. Use Verify Power Progression for permanent training and full clears.");
+                return;
             }
             if (playGame.Run.Complete)
             {

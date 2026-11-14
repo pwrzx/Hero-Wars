@@ -29,5 +29,19 @@ namespace TowerTrials
             PlayerPrefs.SetString(key, json);
             PlayerPrefs.Save();
         }
+
+#if UNITY_EDITOR
+        // Compiled out of every player build, including development builds.
+        public static HeroProfile ResetForDevelopment(HeroCenterCatalog catalog)
+        {
+            foreach (string key in new[] { HeroProfile.SaveKey, HeroProfile.SaveKey + ".backup",
+                "TowerTrials.Run.v1", "TowerTrials.Run.v1.backup", CampaignConfig.SelectedStageKey, "HeroWars.LearnedRules" })
+                PlayerPrefs.DeleteKey(key);
+            var fresh = new HeroProfile { gold = 0, gems = 0, progressionVersion = 1 };
+            fresh.Repair(catalog);
+            fresh.Save();
+            return fresh;
+        }
+#endif
     }
 }

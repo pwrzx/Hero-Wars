@@ -44,7 +44,7 @@ public static class MobilePlayChecks
         }
         SessionState.SetBool(Prefix + "Active", true);
         PlayerPrefs.DeleteKey(CampaignConfig.SelectedStageKey);
-        var fixture = new HeroProfile { progressionVersion = 1 }; fixture.Repair(HeroCenterCatalog.Load()); fixture.Save();
+        var fixture = new HeroProfile { progressionVersion = 1, powerRank = 4 }; fixture.Repair(HeroCenterCatalog.Load()); fixture.Save();
         typeof(TowerGameController).GetField("stageIndex", Private).SetValue(game, 0);
         game.SetPaused(false); game.RestartStage();
         step = assertions = attacks = 0;
@@ -96,7 +96,8 @@ public static class MobilePlayChecks
                     if (game.Busy) return;
                     if (!game.Run.Complete) { SendSwipe(WinningRoom()); attacks++; return; }
                     HeroProfile earned = HeroProfile.Load(HeroCenterCatalog.Load());
-                    Check(earned.gold == 2500 + CampaignConfig.GoldReward(0) && earned.gems == 150 + CampaignConfig.GemReward(0), "First clear pays exact gold and gems");
+                    Check(earned.gold == 2500 + CampaignConfig.GoldReward(0) + 15 * CampaignConfig.DefeatGoldReward(0) &&
+                        earned.gems == 150 + CampaignConfig.GemReward(0), "First clear pays exact kill gold and stage rewards");
                     Check(earned.completedStages.SequenceEqual(new[] { 0 }) && earned.HighestUnlockedStage == 1, "Keep two unlocks after completing keep one");
                     Check(!earned.ClaimStageReward(0), "Reopening a completed keep cannot duplicate rewards");
                     ScreenCapture.CaptureScreenshot("Artifacts/Release-StageCleared.png");

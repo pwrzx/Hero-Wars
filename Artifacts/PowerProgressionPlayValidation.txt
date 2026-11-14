@@ -1,0 +1,1 @@
+PASS: 90 live checks. Base hero reached a real wall; real menu clicks bought four 20% upgrades; fixed enemies survived retry; upgraded hero cleared five towers; exact gold and permanent progress persisted. Original player saves restored.

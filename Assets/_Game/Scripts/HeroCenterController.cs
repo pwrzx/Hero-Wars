@@ -174,6 +174,17 @@ namespace TowerTrials
             var rotate = Label("RotationHint", home, "Drag to rotate", 22, Muted);
             rotate.alignment = TextAlignmentOptions.Center;
             Fit(rotate.rectTransform, new Vector2(0.3f, 0.945f), new Vector2(0.7f, 0.98f));
+            var training = MakeButton("PowerTraining", home, "Train power\n+20%", ShowPowerTraining, false, 28);
+            Fit((RectTransform)training.transform, new Vector2(0.005f, 0.79f), new Vector2(0.25f, 0.93f));
+            var goldTraining = MakeButton("GoldTraining", home, "Train gold\n+10%", ShowGoldTraining, false, 28);
+            Fit((RectTransform)goldTraining.transform, new Vector2(0.75f, 0.63f), new Vector2(0.995f, 0.77f));
+#if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+                var reset = MakeButton("DeveloperResetProgress", home, "DEV: Reset to zero", ResetForDevelopment, false, 24);
+                Fit((RectTransform)reset.transform, new Vector2(0.005f, 0.705f), new Vector2(0.25f, 0.775f));
+            }
+#endif
             var daily = MakeButton("DailyGift", home, "", ClaimDaily, false);
             Fit(daily.GetComponent<RectTransform>(), new Vector2(0.81f, 0.79f), new Vector2(0.995f, 0.93f));
             Icon("DailyGiftIcon", daily.transform, catalog.dailyIcon, new Vector2(0.26f, 0.36f), new Vector2(0.74f, 0.92f));
@@ -350,7 +361,9 @@ namespace TowerTrials
             RefreshItemStates(); ClearChildren(details);
             Color color = HeroCenterCatalog.RarityColor(selected.rarity);
             Label("SelectionName", details, selected.title, 31, White, GameTextRole.Action, new Vector2(0.015f, 0.46f), new Vector2(0.65f, 1));
-            Label("SelectionDescription", details, selected.rarity + "  /  " + selected.description, 23, color, GameTextRole.Body, new Vector2(0.015f, 0.02f), new Vector2(0.65f, 0.48f));
+            Label("SelectionDescription", details, selected.rarity + "  /  " +
+                (selected.PowerBonusPercent > 0 ? selected.PowerBonusLabel + " when equipped" : selected.description),
+                23, color, GameTextRole.Body, new Vector2(0.015f, 0.02f), new Vector2(0.65f, 0.48f));
             bool owned = profile.Owns(selected.id), equipped = profile.Equipped(selected.slot) == selected.id;
             var action = MakeButton("EquipSelection", details, equipped ? "Equipped" : owned ? "Equip" : "Find in chests", () =>
             {
@@ -403,8 +416,10 @@ namespace TowerTrials
         {
             HeroEquipment skin = catalog.Find(profile.skin);
             heroName.text = skin.title;
-            powerText.text = "LEVEL " + profile.level + "   /   " + profile.completedStages.Count + " OF " + CampaignConfig.StageCount + " KEEPS CLEARED";
-            RunSave run = GameSave.Read<RunSave>("TowerTrials.Run.v1", value => value.version == 1);
+            powerText.text = "POWER " + GameUiTheme.Number(profile.CombatStartingPower(catalog)) +
+                (profile.EquipmentBonusPercent(catalog) > 0 ? "   /   GEAR +" + profile.EquipmentBonusPercent(catalog) + "%" : "") + "   /   RANK " + profile.powerRank +
+                "   /   " + profile.completedStages.Count + " OF " + CampaignConfig.StageCount + " KEEPS";
+            RunSave run = GameSave.Read<RunSave>("TowerTrials.Run.v1", value => RunSave.SupportsVersion(value.version));
             int stage = run == null ? profile.HighestUnlockedStage : Mathf.Clamp(run.stageIndex, 0, CampaignConfig.StageCount - 1);
             adventureText.text = "Continue / " + (stage + 1).ToString("00");
             for (int i = 0; i < 3; i++)
@@ -435,7 +450,9 @@ namespace TowerTrials
             Label("LootRarity", modalCard, reward.rarity.ToString().ToUpperInvariant(), 37, color, GameTextRole.Action, new Vector2(0.06f, 0.85f), new Vector2(0.94f, 0.94f)).alignment = TextAlignmentOptions.Center;
             var art = Icon("RewardArt", modalCard, reward.icon, new Vector2(0.15f, 0.36f), new Vector2(0.85f, 0.84f));
             Label("LootName", modalCard, reward.title, 52, White, GameTextRole.Display, new Vector2(0.04f, 0.29f), new Vector2(0.96f, 0.39f)).alignment = TextAlignmentOptions.Center;
-            Label("LootStatus", modalCard, duplicate ? "Already owned  /  +" + compensation + " gold" : "NEW " + reward.slot.ToString().ToUpperInvariant() + " UNLOCKED", 28, color, GameTextRole.Action, new Vector2(0.04f, 0.22f), new Vector2(0.96f, 0.29f)).alignment = TextAlignmentOptions.Center;
+            Label("LootStatus", modalCard, duplicate ? "Already owned  /  +" + compensation + " gold" :
+                "NEW " + reward.slot.ToString().ToUpperInvariant() + (reward.PowerBonusPercent > 0 ? "  /  " + reward.PowerBonusLabel.ToUpperInvariant() : " UNLOCKED"),
+                28, color, GameTextRole.Action, new Vector2(0.04f, 0.22f), new Vector2(0.96f, 0.29f)).alignment = TextAlignmentOptions.Center;
             var equip = MakeButton("EquipReward", modalCard, "Equip now", () => { Equip(reward.id); CloseModal(); ShowPage(1); ShowCategory(reward.slot); }, true, 34);
             Fit(equip.GetComponent<RectTransform>(), new Vector2(0.12f, 0.115f), new Vector2(0.88f, 0.205f));
             var close = MakeButton("Continue", modalCard, "Continue", CloseModal, false, 30);
@@ -458,6 +475,39 @@ namespace TowerTrials
             profile.Save(); RefreshWallet(); Notify("Daily gift claimed: +300 gold and +15 gems.");
         }
 
+        public bool UpgradePower()
+        {
+            if (!profile.TryUpgradePower()) return false;
+            profile.Save();
+            RefreshWallet();
+            return true;
+        }
+
+        public void ShowPowerTraining()
+        {
+            if (openingChest || loading) return;
+            ClearChildren(modalCard); modal.gameObject.SetActive(true);
+            bool maximum = profile.powerRank >= HeroProfile.MaxPowerRank;
+            GameUi.Label("TrainingTitle", modalCard, "Power training", 60, White,
+                new Vector2(0.07f, 0.83f), new Vector2(0.93f, 0.96f), GameTextRole.Display);
+            GameUi.Label("TrainingPower", modalCard, "STARTING POWER\n" + GameUiTheme.Number(profile.CombatStartingPower(catalog)) +
+                (maximum ? "\nMaximum rank" : "  >  " + GameUiTheme.Number(profile.NextCombatStartingPower(catalog)) + "\n+20% training / gear included"),
+                42, Gold, new Vector2(0.08f, 0.57f), new Vector2(0.92f, 0.80f), GameTextRole.Number);
+            GameUi.Label("TrainingExplanation", modalCard,
+                "Training is permanent. Restart your keep to use your new starting power.\n\nEnemy powers stay fixed. Earn gold from kills, even on failed attempts.",
+                32, Muted, new Vector2(0.08f, 0.32f), new Vector2(0.92f, 0.56f));
+            var upgrade = MakeButton("UpgradePower", modalCard, maximum ? "Maximum rank" :
+                "Train / " + GameUiTheme.Number(profile.PowerUpgradeCost) + " gold", () =>
+                { if (UpgradePower()) ShowPowerTraining(); }, true, 34);
+            upgrade.interactable = !maximum && profile.gold >= profile.PowerUpgradeCost;
+            Fit((RectTransform)upgrade.transform, new Vector2(0.10f, 0.18f), new Vector2(0.90f, 0.29f));
+            GameUi.Label("TrainingWallet", modalCard, "Your gold: " + GameUiTheme.Number(profile.gold) +
+                (!maximum && profile.gold < profile.PowerUpgradeCost ? " / Fight and retry to earn more." : ""),
+                26, Muted, new Vector2(0.08f, 0.115f), new Vector2(0.92f, 0.17f));
+            Fit((RectTransform)MakeButton("CloseTraining", modalCard, "Back to hero", CloseModal, false, 32).transform,
+                new Vector2(0.20f, 0.025f), new Vector2(0.80f, 0.105f));
+        }
+
         private void ShowSettings()
         {
             if (openingChest) return;
@@ -465,6 +515,48 @@ namespace TowerTrials
             GameUi.Settings(modalCard, CloseModal, () => ShowInformation("How to play", GameUi.HelpText),
                 () => ShowInformation("About & privacy", GameUi.AboutText));
         }
+
+        public bool UpgradeGold()
+        {
+            if (!profile.TryUpgradeGold()) return false;
+            profile.Save();
+            RefreshWallet();
+            return true;
+        }
+
+        public void ShowGoldTraining()
+        {
+            if (openingChest || loading) return;
+            ClearChildren(modalCard); modal.gameObject.SetActive(true);
+            bool maximum = profile.goldRank >= HeroProfile.MaxGoldRank;
+            GameUi.Label("GoldTrainingTitle", modalCard, "Gold training", 60, White,
+                new Vector2(0.07f, 0.83f), new Vector2(0.93f, 0.96f), GameTextRole.Display);
+            GameUi.Label("GoldTrainingBonus", modalCard, "GOLD EARNED\n+" + profile.GoldBonusPercent + "%" +
+                (maximum ? "\nMaximum rank" : "  >  +" + (profile.GoldBonusPercent + HeroProfile.GoldUpgradePercent) + "%\n+10% per rank"),
+                42, Gold, new Vector2(0.08f, 0.57f), new Vector2(0.92f, 0.80f), GameTextRole.Number);
+            GameUi.Label("GoldTrainingExplanation", modalCard,
+                "Earn more gold from every enemy kill and first level clear.\n\nThe bonus is permanent and applies to new rewards immediately.",
+                32, Muted, new Vector2(0.08f, 0.32f), new Vector2(0.92f, 0.56f));
+            var upgrade = MakeButton("UpgradeGold", modalCard, maximum ? "Maximum rank" :
+                "Train / " + GameUiTheme.Number(profile.GoldUpgradeCost) + " gold", () =>
+                { if (UpgradeGold()) ShowGoldTraining(); }, true, 34);
+            upgrade.interactable = !maximum && profile.gold >= profile.GoldUpgradeCost;
+            Fit((RectTransform)upgrade.transform, new Vector2(0.10f, 0.18f), new Vector2(0.90f, 0.29f));
+            GameUi.Label("GoldTrainingWallet", modalCard, "Your gold: " + GameUiTheme.Number(profile.gold),
+                26, Muted, new Vector2(0.08f, 0.115f), new Vector2(0.92f, 0.17f));
+            Fit((RectTransform)MakeButton("CloseGoldTraining", modalCard, "Back to hero", CloseModal, false, 32).transform,
+                new Vector2(0.20f, 0.025f), new Vector2(0.80f, 0.105f));
+        }
+
+#if UNITY_EDITOR
+        public void ResetForDevelopment()
+        {
+            if (openingChest || loading || !Application.isPlaying) return;
+            GameSave.ResetForDevelopment(catalog);
+            loading = true;
+            SceneManager.LoadSceneAsync("HeroCenter");
+        }
+#endif
 
         private void ShowInformation(string heading, string copy)
         {

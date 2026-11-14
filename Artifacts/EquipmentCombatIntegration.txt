@@ -1,0 +1,1 @@
+PASS: 3 actual controller integration checks. Equipped weapon/shield bonuses affect initial gameplay, checkpoint restore and restarted gameplay without changing enemies. Original player saves restored.
