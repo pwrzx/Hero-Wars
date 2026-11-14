@@ -1,0 +1,19 @@
+# ninja log v5
+132	6183	8161352381049201	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	f3062b9188048ebf
+72	6177	8161352381049201	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	6a9eaa7d9cf98e9d
+88	6188	8161352381266750	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	d23c4235d413a788
+171	6868	8161352388097597	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	497fca15248057e0
+145	6207	8161352381514963	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	f701dbbd97df466b
+26	6281	8161352382200998	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	c1e66f3b3815f0b
+6963	7559	8161352394992183	D:/Unity/Projects/Hero Wars/Hero Wars/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5r641z5b/obj/arm64-v8a/libgame.so	4b757240aa821c89
+157	6733	8161352386677621	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	90e09735219c4622
+110	6962	8161352388960215	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	fac739d4f489d1f0
+48	1280	8161424681655050	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	6a9eaa7d9cf98e9d
+58	1284	8161424681680295	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	f3062b9188048ebf
+9	1305	8161424681926286	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	d23c4235d413a788
+67	1327	8161424682128654	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	f701dbbd97df466b
+29	1376	8161424682621631	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	c1e66f3b3815f0b
+77	1495	8161424683848522	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	497fca15248057e0
+38	1521	8161424684093371	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	90e09735219c4622
+20	1629	8161424685131707	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	fac739d4f489d1f0
+1629	1864	8161424687502624	D:/Unity/Projects/Hero Wars/Hero Wars/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5r641z5b/obj/arm64-v8a/libgame.so	4b757240aa821c89

@@ -1,0 +1,5 @@
+D:/Unity/Projects/Hero Wars/Hero Wars/.utmp/RelWithDebInfo/5r641z5b/arm64-v8a/CMakeFiles/edit_cache.dir
+D:/Unity/Projects/Hero Wars/Hero Wars/.utmp/RelWithDebInfo/5r641z5b/arm64-v8a/CMakeFiles/rebuild_cache.dir
+D:/Unity/Projects/Hero Wars/Hero Wars/.utmp/RelWithDebInfo/5r641z5b/arm64-v8a/GameActivity/CMakeFiles/game.dir
+D:/Unity/Projects/Hero Wars/Hero Wars/.utmp/RelWithDebInfo/5r641z5b/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+D:/Unity/Projects/Hero Wars/Hero Wars/.utmp/RelWithDebInfo/5r641z5b/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir
