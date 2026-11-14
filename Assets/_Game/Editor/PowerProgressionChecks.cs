@@ -20,6 +20,7 @@ public static class PowerProgressionChecks
         var opening = new StageRun(campaign.stages[0]);
         foreach (int room in new[] { 0, 1, 2 }) opening.Attack(0, room);
         Check(opening.Power == 61 && opening.TowerIndex == 1, "12 + 7 + 13 + 29 = 61");
+        var orders = new System.Collections.Generic.HashSet<string>();
         var report = new System.Text.StringBuilder();
         report.AppendLine("Level / Minimum starting power / First winning training rank / Final power");
         long previousMinimum = 0;
@@ -34,6 +35,12 @@ public static class PowerProgressionChecks
             for (int t = 1; t < 5; t++)
                 Check(stage.towers[t].enemies.Min() > stage.towers[t - 1].enemies.Max(), "Each tower is stronger than the previous tower");
             var blocked = new StageRun(stage);
+            for (int t = 0; t < stage.towers.Length; t++)
+            {
+                int[] order = Enumerable.Range(0, 3).Select(floor => blocked.RoomAtFloor(t, floor)).ToArray();
+                Check(order.OrderBy(room => room).SequenceEqual(new[] { 0, 1, 2 }), "Each floor gets a different enemy from its own tower");
+                orders.Add(string.Join(",", order));
+            }
             ClearAvailable(blocked);
             Check(blocked.PowerBlocked && !blocked.Complete, "Base hero reaches a real wall");
             long wallPower = blocked.Power;
@@ -41,6 +48,7 @@ public static class PowerProgressionChecks
             RunSave checkpoint = JsonUtility.FromJson<RunSave>(JsonUtility.ToJson(blocked.Save(i)));
             Check(StageRun.TryRestore(stage, checkpoint, out var restored) && restored.PowerBlocked &&
                 restored.Power == wallPower && restored.DefeatedCount == defeats, "Blocked checkpoint survives reload");
+            Check(checkpoint.roomOrder.SequenceEqual(restored.Save(i).roomOrder), "Reload preserves the exact floor order in every tower");
             int guard = Enumerable.Range(0, stage.towers[blocked.TowerIndex].enemies.Length)
                 .First(room => !blocked.IsDefeated(blocked.TowerIndex, room));
             Check(blocked.Attack(blocked.TowerIndex, guard) == AttackOutcome.Lost && blocked.Power == wallPower, "Losing preserves power and enemy values");
@@ -79,6 +87,17 @@ public static class PowerProgressionChecks
             Check(stage.Signature == generated[i].Signature, "Combat and upgrades never mutate campaign data");
             report.AppendLine((i + 1) + " / " + stage.MinimumStartingPower + " / " + profile.powerRank + " / " + upgraded.Power);
         }
+        Check(orders.Count > 1, "Fresh campaign towers vary their floor order");
+        RunSave legacy = opening.Save(0);
+        legacy.version = 3;
+        legacy.roomOrder = null;
+        Check(StageRun.TryRestore(campaign.stages[0], legacy, out var migrated) && migrated.Power == 61 &&
+            migrated.Save(0).roomOrder.SequenceEqual(Enumerable.Repeat(new[] { 0, 1, 2 }, 5).SelectMany(order => order)),
+            "Old checkpoints retain their authored floor order and completed rooms");
+        RunSave corrupt = opening.Save(0);
+        corrupt.roomOrder[0] = corrupt.roomOrder[1];
+        Check(!StageRun.TryRestore(campaign.stages[0], corrupt, out _), "Duplicate rooms in a saved tower are rejected");
+        Check(StageRun.TryRestore(campaign.stages[0], opening.Save(0), out _), "Editing a saved layout cannot mutate the live run");
         var poor = new HeroProfile { gold = 99 };
         Check(!poor.TryUpgradePower() && poor.gold == 99 && poor.powerRank == 0, "Unaffordable training makes no changes");
         var maximum = new HeroProfile { powerRank = HeroProfile.MaxPowerRank, gold = 1000000 };

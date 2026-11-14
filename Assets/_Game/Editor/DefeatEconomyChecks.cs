@@ -27,13 +27,18 @@ public static class DefeatEconomyChecks
         run.Attack(0, 2);
         Check(run.TryReviveWithPowerBoost() && run.Power == 68, "A later defeat can earn another separate reward");
         var saved = JsonUtility.FromJson<RunSave>(JsonUtility.ToJson(run.Save(0)));
-        Check(saved.version == 3 && saved.rewardedRevives.Length == 3, "Checkpoint records all reward timings");
+        Check(saved.version == RunSave.CurrentVersion && saved.rewardedRevives.Length == 3, "Checkpoint records all reward timings");
         Check(StageRun.TryRestore(definition, saved, out var restored) && restored.Power == 68 && restored.DefeatedCount == 2 && !restored.Failed,
             "Reward checkpoints replay correctly even when rooms were killed out of order");
         Check(restored.Attack(0, 2) == AttackOutcome.StageCleared && restored.Power == 128, "Boosted hero can defeat the blocker");
         Check(StageRun.TryRestore(definition, restored.Save(0), out var completed) && completed.Complete && completed.Power == 128,
             "A completed boosted run survives reload exactly");
         Check(!completed.TryReviveWithPowerBoost(), "Completed runs cannot receive an ad boost");
+        var oldBoostedSave = run.Save(0);
+        oldBoostedSave.version = 3;
+        oldBoostedSave.roomOrder = null;
+        Check(StageRun.TryRestore(definition, oldBoostedSave, out var oldBoosted) && oldBoosted.Power == 68 &&
+            oldBoosted.IsDefeated(0, 1) && oldBoosted.RoomAtFloor(0, 1) == 1, "Legacy boosted checkpoints retain power, kills and floor positions");
         RunSave damaged = run.Save(0);
         damaged.rewardedRevives[0].clearedMasks[0] = 256;
         Check(!StageRun.TryRestore(definition, damaged, out _), "Invalid reward room bits are rejected");
@@ -48,7 +53,7 @@ public static class DefeatEconomyChecks
         Check(StageRun.TryRestore(legacyDefinition, legacySave, out var legacyRun) && legacyRun.Failed && legacyRun.Power == 19,
             "Version-two failed checkpoints still restore");
         Check(legacyRun.TryReviveWithPowerBoost() && legacyRun.Power == 23 && StageRun.TryRestore(legacyDefinition, legacyRun.Save(0), out var upgradedSave) && upgradedSave.Power == 23,
-            "Old checkpoints migrate to boosted version-three saves");
+            "Old checkpoints migrate to the current format with boosted power");
         legacySave.version = 1;
         Check(StageRun.TryRestore(legacyDefinition, legacySave, out _), "Original puzzle checkpoints remain compatible");
         var nearLimit = new StageRun(new StageDefinition("Overflow guard", 1, new TowerDefinition(long.MaxValue / 2 - 1)) { allowPowerWalls = true });

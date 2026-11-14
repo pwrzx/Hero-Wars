@@ -89,16 +89,14 @@ namespace TowerTrials
             HeroCenterCatalog catalog = HeroCenterCatalog.Load();
             HeroProfile profile = HeroProfile.Load(catalog);
             long startingPower = profile.CombatStartingPower(catalog);
+            int highestStage = Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1);
             if (PlayerPrefs.HasKey(CampaignConfig.SelectedStageKey))
             {
-                int selected = Mathf.Clamp(PlayerPrefs.GetInt(CampaignConfig.SelectedStageKey), 0, profile.HighestUnlockedStage);
+                stageIndex = Mathf.Clamp(PlayerPrefs.GetInt(CampaignConfig.SelectedStageKey), 0, highestStage);
                 PlayerPrefs.DeleteKey(CampaignConfig.SelectedStageKey);
-                saved = new StageRun(campaign.stages[selected], startingPower).Save(selected);
+                saved = null;
             }
-            else if (saved == null)
-                saved = new StageRun(campaign.stages[Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1)], startingPower)
-                    .Save(Mathf.Min(profile.HighestUnlockedStage, campaign.stages.Length - 1));
-            stageIndex = saved == null ? 0 : Mathf.Clamp(saved.stageIndex, 0, campaign.stages.Length - 1);
+            else stageIndex = saved == null ? highestStage : Mathf.Clamp(saved.stageIndex, 0, campaign.stages.Length - 1);
             rewardGranted = false;
             if (saved == null || saved.stageIndex != stageIndex || saved.startingPower != startingPower ||
                 !StageRun.TryRestore(campaign.stages[stageIndex], saved, out var restored))
@@ -226,9 +224,9 @@ namespace TowerTrials
                 view.markers = new GameObject[count];
                 view.segments = new TowerSegmentPhysics[count];
                 int occupiedFloor = 0;
-                for (int r = 0; r < count; r++)
+                for (int floor = 0; floor < count; floor++)
                 {
-                    // Room indices remain stable for combat/saves; only their physical height compacts.
+                    int r = Run.RoomAtFloor(t, floor);
                     bool defeated = Run.IsDefeated(t, r);
                     float roomY = occupiedFloor * RoomHeight;
                     view.rooms[r] = Model("TowerRoom", view.root, new Vector3(0, roomY, 0), 1);
@@ -513,13 +511,14 @@ namespace TowerTrials
         private IEnumerator SettleTower(int index)
         {
             TowerView tower = towers[index];
-            int floor = 0;
-            for (int r = 0; r < tower.rooms.Length; r++)
+            int occupiedFloors = 0;
+            for (int floor = 0; floor < tower.rooms.Length; floor++)
             {
+                int r = Run.RoomAtFloor(index, floor);
                 if (Run.IsDefeated(index, r)) continue;
-                tower.segments[r].DropTo(floor++ * RoomHeight);
+                tower.segments[r].DropTo(occupiedFloors++ * RoomHeight);
             }
-            tower.crown.DropTo(floor * RoomHeight);
+            tower.crown.DropTo(occupiedFloors * RoomHeight);
             bool falling;
             do
             {

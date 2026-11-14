@@ -110,14 +110,16 @@ namespace TowerTrials
     [Serializable]
     public sealed class RunSave
     {
-        public int version = 3;
+        public const int CurrentVersion = 4;
+        public int version = CurrentVersion;
         public int stageIndex;
         public int[] clearedMasks;
+        public int[] roomOrder;
         public bool failed;
         public long startingPower;
         public string definitionSignature, runId;
         public RewardedReviveSave[] rewardedRevives;
-        public static bool SupportsVersion(int value) => value >= 1 && value <= 3;
+        public static bool SupportsVersion(int value) => value >= 1 && value <= CurrentVersion;
     }
 
     // Unity-independent game rules: presentation never calculates or awards power.
@@ -131,6 +133,7 @@ namespace TowerTrials
         public bool Failed { get; private set; }
         public bool Complete => TowerIndex == Definition.towers.Length;
         private readonly int[] clearedMasks;
+        private readonly int[] roomOrder, towerOffsets;
         private readonly List<RewardedReviveSave> rewardedRevives = new List<RewardedReviveSave>();
 
         public int DefeatedCount
@@ -155,7 +158,9 @@ namespace TowerTrials
             }
         }
 
-        public StageRun(StageDefinition definition, long? startingPower = null)
+        public StageRun(StageDefinition definition, long? startingPower = null) : this(definition, startingPower, true) { }
+
+        private StageRun(StageDefinition definition, long? startingPower, bool shuffle)
         {
             definition.Validate();
             Definition = definition;
@@ -165,9 +170,32 @@ namespace TowerTrials
             foreach (TowerDefinition tower in definition.towers)
                 foreach (long enemy in tower.enemies) maximum = checked(maximum + enemy);
             Power = StartingPower;
-            RunId = Guid.NewGuid().ToString("N");
+            var id = Guid.NewGuid();
+            RunId = id.ToString("N");
             clearedMasks = new int[definition.towers.Length];
+            towerOffsets = new int[definition.towers.Length];
+            int roomCount = 0;
+            for (int t = 0; t < towerOffsets.Length; t++)
+            {
+                towerOffsets[t] = roomCount;
+                roomCount += definition.towers[t].enemies.Length;
+            }
+            roomOrder = new int[roomCount];
+            var random = shuffle ? new Random(id.GetHashCode()) : null;
+            for (int t = 0; t < towerOffsets.Length; t++)
+            {
+                int offset = towerOffsets[t];
+                // Inside-out Fisher–Yates, independently within each tower.
+                for (int floor = 0; floor < definition.towers[t].enemies.Length; floor++)
+                {
+                    int slot = random?.Next(floor + 1) ?? floor;
+                    roomOrder[offset + floor] = roomOrder[offset + slot];
+                    roomOrder[offset + slot] = floor;
+                }
+            }
         }
+
+        public int RoomAtFloor(int tower, int originalFloor) => roomOrder[towerOffsets[tower] + originalFloor];
 
         public bool IsDefeated(int tower, int room) => (clearedMasks[tower] & (1 << room)) != 0;
 
@@ -218,13 +246,13 @@ namespace TowerTrials
         }
 
         public RunSave Save(int stageIndex) => new RunSave
-        { stageIndex = stageIndex, clearedMasks = (int[])clearedMasks.Clone(), failed = Failed,
+        { stageIndex = stageIndex, clearedMasks = (int[])clearedMasks.Clone(), roomOrder = (int[])roomOrder.Clone(), failed = Failed,
             startingPower = StartingPower, definitionSignature = Definition.Signature, runId = RunId,
             rewardedRevives = rewardedRevives.ConvertAll(value => new RewardedReviveSave { clearedMasks = (int[])value.clearedMasks.Clone() }).ToArray() };
 
         public static bool TryRestore(StageDefinition definition, RunSave save, out StageRun run)
         {
-            run = new StageRun(definition);
+            run = null;
             if (save == null || !RunSave.SupportsVersion(save.version) || save.clearedMasks == null ||
                 save.clearedMasks.Length != definition.towers.Length) return false;
             if (save.version == 1 && definition.allowPowerWalls) return false;
@@ -232,11 +260,12 @@ namespace TowerTrials
             {
                 if (save.startingPower <= 0 || save.definitionSignature != definition.Signature ||
                     string.IsNullOrEmpty(save.runId)) return false;
-                try { run = new StageRun(definition, save.startingPower); }
-                catch (OverflowException) { return false; }
-                run.RunId = save.runId;
             }
-            if (save.version == 3)
+            try { run = new StageRun(definition, save.version == 1 ? definition.startingPower : save.startingPower, false); }
+            catch (OverflowException) { return false; }
+            if (save.version >= 2) run.RunId = save.runId;
+            if (save.version >= 4 && !run.RestoreRoomOrder(save.roomOrder)) return false;
+            if (save.version >= 3)
             {
                 if (save.rewardedRevives == null) return false;
                 foreach (RewardedReviveSave reward in save.rewardedRevives)
@@ -246,6 +275,23 @@ namespace TowerTrials
             // Replay the exact cleared-room checkpoint before each reward, then remaining kills.
             if (!ReplayToMasks(run, save.clearedMasks)) return false;
             if (save.failed && !ReplayDefeat(run)) return false;
+            return true;
+        }
+
+        private bool RestoreRoomOrder(int[] saved)
+        {
+            if (saved == null || saved.Length != roomOrder.Length) return false;
+            for (int t = 0; t < towerOffsets.Length; t++)
+            {
+                int seen = 0, count = Definition.towers[t].enemies.Length;
+                for (int floor = 0; floor < count; floor++)
+                {
+                    int room = saved[towerOffsets[t] + floor];
+                    if (room < 0 || room >= count || (seen & (1 << room)) != 0) return false;
+                    seen |= 1 << room;
+                }
+            }
+            Array.Copy(saved, roomOrder, saved.Length);
             return true;
         }
 

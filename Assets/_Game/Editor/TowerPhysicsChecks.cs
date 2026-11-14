@@ -128,7 +128,7 @@ public static class TowerPhysicsChecks
             foreach (TowerSegmentPhysics segment in tower.GetComponentsInChildren<TowerSegmentPhysics>())
                 landings[segment] = segment.LandingCount;
             sawFall = sawLanding = false;
-            int room = Orders[scenario][move];
+            int room = game.Run.RoomAtFloor(game.Run.TowerIndex, Orders[scenario][move]);
             Vector2 end = game.EnemyScreenPosition(room);
             Vector2 start = end - Vector2.right * Screen.width * 0.4f;
             attackingHero = game.transform.Find("Presentation/Knight");
@@ -170,8 +170,9 @@ public static class TowerPhysicsChecks
         Check(Vector3.Dot(hero.forward, Vector3.right) > 0.4f, "Hero turns toward the enemies");
         Check(Vector3.Distance(hero.position, new Vector3(-2.55f, 0.82f, -0.12f)) < 0.001f, "Hero rests on his original platform");
         int floor = 0, index = game.Run.TowerIndex;
-        for (int room = 0; room < game.Run.Definition.towers[index].enemies.Length; room++)
+        for (int originalFloor = 0; originalFloor < game.Run.Definition.towers[index].enemies.Length; originalFloor++)
         {
+            int room = game.Run.RoomAtFloor(index, originalFloor);
             Transform roomView = tower.Find("Room_" + room);
             if (game.Run.IsDefeated(index, room))
             {

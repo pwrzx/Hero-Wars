@@ -1,4 +1,4 @@
-PASS: 1093 power progression checks. Fixed enemies, five towers, real walls, 20% permanent training, exact rewards, retries and save compatibility.
+PASS: 1241 power progression checks. Fixed enemies, five towers, real walls, 20% permanent training, exact rewards, retries and save compatibility.
 Level / Minimum starting power / First winning training rank / Final power
 1 / 24 / 4 / 99146
 2 / 31 / 5 / 131785
