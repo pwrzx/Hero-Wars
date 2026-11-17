@@ -1,0 +1,5 @@
+PASS: Name 9/30
+PASS: App Store subtitle 28/30
+PASS: Google Play short description 59/80
+PASS: App Store keywords 67/100
+PASS: App Store promotional text 106/170

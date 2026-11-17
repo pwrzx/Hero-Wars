@@ -1,0 +1,1 @@
+PASS: 475 equipment/reset assertions. Rarity bonuses, every shield/weapon combination, training stacking, actual chest loot, duplicate protection, checkpoint persistence and zero-progress reset. Original player data restored.

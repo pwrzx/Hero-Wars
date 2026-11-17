@@ -1,0 +1,1 @@
+PASS: runtime C# compiles with player and DEVELOPMENT_BUILD symbols, without UNITY_EDITOR. The compiled player DLL contains no reset method, reset button identifier, or reset button label.

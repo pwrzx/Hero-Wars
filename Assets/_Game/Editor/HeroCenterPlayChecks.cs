@@ -22,12 +22,19 @@ public static class HeroCenterPlayChecks
         if (!Application.isPlaying || SceneManager.GetActiveScene().name != "HeroCenter")
             throw new InvalidOperationException("Enter Play mode in HeroCenter first.");
         if (running) throw new InvalidOperationException("The menu playtest is already running.");
-        Snapshot(HeroProfile.SaveKey); Snapshot("TowerTrials.Run.v1");
+        foreach (string key in new[] { HeroProfile.SaveKey, HeroProfile.SaveKey + ".backup", "TowerTrials.Run.v1", "TowerTrials.Run.v1.backup" }) Snapshot(key);
+        foreach (string key in new[] { "HeroWars.LearnedRules", CampaignConfig.SelectedStageKey })
+        {
+            SessionState.SetBool(Prefix + key + ".exists", PlayerPrefs.HasKey(key));
+            SessionState.SetInt(Prefix + key, PlayerPrefs.GetInt(key, 0));
+            PlayerPrefs.DeleteKey(key);
+        }
+        PlayerPrefs.DeleteKey("TowerTrials.Run.v1"); PlayerPrefs.DeleteKey("TowerTrials.Run.v1.backup");
         SessionState.SetBool(Prefix + "HasSnapshot", true);
         HeroCenterController menu = UnityEngine.Object.FindAnyObjectByType<HeroCenterController>();
         var fixture = new HeroProfile(); fixture.Repair(menu.Catalog);
         typeof(HeroCenterController).GetField("profile", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(menu, fixture);
-        menu.ShowPage(0);
+        menu.ShowCategory(EquipmentSlot.Skin); menu.ShowPage(0);
         typeof(HeroCenterController).GetMethod("RefreshWallet", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(menu, null);
         step = 0; assertions = 0; rewardId = null; running = true;
         deadline = EditorApplication.timeSinceStartup + 35;
@@ -74,8 +81,11 @@ public static class HeroCenterPlayChecks
                     Check(menu.Profile.gold == 2800 && menu.Profile.gems == 45, "Daily gift credits both currencies");
                     Click("DailyGift");
                     Check(menu.Profile.gold == 2800 && menu.Profile.gems == 45, "Second daily click gives no extra currency");
-                    Click("Adventure"); step++; break;
+                    Click("Adventure");
+                    step++; break;
                 case 5:
+                    if (SceneManager.GetActiveScene().name == "HeroCenter" && GameObject.Find("BeginAdventure") != null)
+                    { Click("BeginAdventure"); return; }
                     if (SceneManager.GetActiveScene().name != "TowerPrototype") return;
                     TowerGameController game = UnityEngine.Object.FindAnyObjectByType<TowerGameController>();
                     if (game == null || game.Run == null) return;
@@ -141,9 +151,14 @@ public static class HeroCenterPlayChecks
     public static void RestorePlayerData()
     {
         if (!SessionState.GetBool(Prefix + "HasSnapshot", false)) return;
-        foreach (string key in new[] { HeroProfile.SaveKey, "TowerTrials.Run.v1" })
+        foreach (string key in new[] { HeroProfile.SaveKey, HeroProfile.SaveKey + ".backup", "TowerTrials.Run.v1", "TowerTrials.Run.v1.backup" })
         {
             if (SessionState.GetBool(Prefix + key + ".exists", false)) PlayerPrefs.SetString(key, SessionState.GetString(Prefix + key, ""));
+            else PlayerPrefs.DeleteKey(key);
+        }
+        foreach (string key in new[] { "HeroWars.LearnedRules", CampaignConfig.SelectedStageKey })
+        {
+            if (SessionState.GetBool(Prefix + key + ".exists", false)) PlayerPrefs.SetInt(key, SessionState.GetInt(Prefix + key, 0));
             else PlayerPrefs.DeleteKey(key);
         }
         PlayerPrefs.Save();

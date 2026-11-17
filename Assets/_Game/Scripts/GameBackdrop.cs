@@ -18,7 +18,7 @@ namespace TowerTrials
                 throw new System.InvalidOperationException("Prepare the painted backdrop material with PrototypeSetup.PreparePolishAssets.");
             imageAspect = (float)material.mainTexture.width / material.mainTexture.height;
             GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = "AncientChasmPainting";
+            quad.name = material.mainTexture.name;
             quad.transform.SetParent(transform, false);
             Collider collider = quad.GetComponent<Collider>();
             if (Application.isPlaying) Destroy(collider); else DestroyImmediate(collider);

@@ -1,0 +1,29 @@
+{
+  "export": "D:\\Unity\\Projects\\Hero Wars\\Hero Wars\\Builds\\iOS",
+  "display_name": "Hero Wars",
+  "version": "1.0.0",
+  "icon_sizes": 19,
+  "privacy_manifests": [
+    "Frameworks\\UnityRuntime.framework\\PrivacyInfo.xcprivacy",
+    "UnityFramework\\PrivacyInfo.xcprivacy"
+  ],
+  "privacy_api_reasons": {
+    "NSPrivacyAccessedAPICategorySystemBootTime": [
+      "35F9.1"
+    ],
+    "NSPrivacyAccessedAPICategoryDiskSpace": [
+      "E174.1"
+    ],
+    "NSPrivacyAccessedAPICategoryUserDefaults": [
+      "CA92.1"
+    ],
+    "NSPrivacyAccessedAPICategoryFileTimestamp": [
+      "0A2A.1",
+      "C617.1"
+    ]
+  },
+  "xcode_compilation_performed": false,
+  "device_installation_performed": false,
+  "errors": [],
+  "passed": true
+}

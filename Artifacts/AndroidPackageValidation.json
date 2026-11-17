@@ -1,0 +1,52 @@
+{
+  "package": "HeroWars-QA.apk",
+  "bytes": 36306091,
+  "sha256": "063c990374f551467ca33c5fa26edbaeea1203ba9694d9a828d0e0337d552ff6",
+  "libraries": [
+    {
+      "name": "lib/arm64-v8a/lib_burst_generated.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "lib/arm64-v8a/libc++_shared.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "lib/arm64-v8a/libgame.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "lib/arm64-v8a/libil2cpp.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "lib/arm64-v8a/libmain.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    },
+    {
+      "name": "lib/arm64-v8a/libunity.so",
+      "machine": 183,
+      "minimum_load_alignment": 16384,
+      "compressed": true,
+      "zip_16kb_aligned": false
+    }
+  ],
+  "pipeline_runtime_server_present": false,
+  "errors": [],
+  "passed": true
+}

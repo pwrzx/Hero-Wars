@@ -105,6 +105,9 @@ public static class PrototypeSetup
         Shader glow = Shader.Find("TowerTrials/SoftGlow");
         Shader painting = Shader.Find("TowerTrials/PaintedBackdrop");
         if (glow == null || painting == null) throw new InvalidOperationException("Import the Tower Trials effect shaders first.");
+        MakeMaterial("Keep_Limestone", new Color(0.72f, 0.69f, 0.62f));
+        MakeMaterial("Keep_Ashlar", new Color(0.32f, 0.40f, 0.46f));
+        MakeMaterial("Keep_Vermilion", new Color(0.68f, 0.20f, 0.13f));
         string[] names = { "FX_Glow", "FX_Ring", "FX_Slash" };
         for (int i = 0; i < names.Length; i++)
         {
@@ -119,13 +122,18 @@ public static class PrototypeSetup
             }
         }
         string backgroundPath = folder + "FX_Backdrop.mat";
+        Texture2D valley = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Art/Backgrounds/DawnValley.png");
+        if (valley == null) throw new InvalidOperationException("The DawnValley background is missing.");
         Material background = AssetDatabase.LoadAssetAtPath<Material>(backgroundPath);
         if (background == null)
         {
             background = new Material(painting) { name = "FX_Backdrop" };
-            background.mainTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Game/Art/Backgrounds/AncientChasm.png");
-            if (background.mainTexture == null) throw new InvalidOperationException("The AncientChasm background is missing.");
             AssetDatabase.CreateAsset(background, backgroundPath);
+        }
+        if (background.mainTexture != valley)
+        {
+            background.mainTexture = valley;
+            EditorUtility.SetDirty(background);
         }
         AssetDatabase.SaveAssets();
     }

@@ -9,6 +9,7 @@ using UnityEngine.EventSystems;
 public static class PrototypeChecks
 {
     private static int assertions;
+    private static readonly HashSet<string> exploredStates = new HashSet<string>();
 
     [MenuItem("Tower Trials/Verify Game Rules")]
     public static void VerifyRulesMenu() => VerifyRules();
@@ -21,8 +22,9 @@ public static class PrototypeChecks
         StageDefinition[] stages = campaign.stages;
         foreach (StageDefinition stage in stages)
         {
+            exploredStates.Clear();
             stage.Validate();
-            Explore(stage, new StageRun(stage));
+            Explore(stage, new StageRun(stage, Math.Max(stage.startingPower, stage.MinimumStartingPower)));
         }
         // Fixed rule fixture stays independent of editable balancing numbers.
         var fixture = new StageDefinition("Combat fixture", 20,
@@ -34,10 +36,18 @@ public static class PrototypeChecks
         Check(run.Attack(0, 1) == AttackOutcome.Lost && run.Power == 24, "Stronger enemy defeats hero without granting power");
         Check(run.Attack(0, 2) == AttackOutcome.Invalid, "Cannot attack after losing");
         Check(StageRun.TryRestore(fixture, run.Save(0), out var lost) && lost.Failed && lost.Power == 24, "Failed run restores");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
+        Check(lost.TryRevive() && !lost.Failed && lost.Power == 24 && lost.IsDefeated(0, 0), "Revive retains power and cleared rooms");
+        Check(!lost.TryRevive() && lost.Power == 24, "A second revive cannot alter a live run");
+        Check(StageRun.TryRestore(fixture, JsonUtility.FromJson<RunSave>(JsonUtility.ToJson(lost.Save(0))), out var revived) &&
+            !revived.Failed && revived.Power == 24 && revived.IsDefeated(0, 0), "Revived checkpoint survives JSON save/reload");
+        Check(revived.Attack(0, 2) == AttackOutcome.Defeated && revived.Power == 39, "Revived hero can choose a different legal attack");
+        var finished = new StageRun(new StageDefinition("Completed revive fixture", 20, new TowerDefinition(4)));
+        finished.Attack(0, 0);
+        Check(!finished.TryRevive() && finished.Complete && finished.Power == 24, "Completed stages cannot be revived");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 0, 1, 0 } }, out _), "Future tower progress is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 256, 0, 0 } }, out _), "Invalid room bits are rejected");
         Check(!StageRun.TryRestore(fixture, new RunSave { version = 22, clearedMasks = new[] { 0, 0, 0 } }, out _), "Unknown save version is rejected");
-        Check(!StageRun.TryRestore(fixture, new RunSave { clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
+        Check(!StageRun.TryRestore(fixture, new RunSave { version = 1, clearedMasks = new[] { 2, 0, 0 } }, out _), "Impossible saved defeat is rejected");
         ExpectInvalid(new StageDefinition("Tie after a kill", 20, new TowerDefinition(4, 24)));
         ExpectInvalid(new StageDefinition("Blocked stage", 20, new TowerDefinition(21, 30)));
         ExpectInvalid(new StageDefinition("Repeated powers", 20, new TowerDefinition(4, 4)));
@@ -46,7 +56,7 @@ public static class PrototypeChecks
         try { new StageDefinition("Overflow", long.MaxValue - 1, new TowerDefinition(3)).Validate(); }
         catch (OverflowException) { overflow = true; }
         Check(overflow, "Power overflow must be rejected");
-        string report = "PASS: " + assertions + " assertions; all reachable winning orders across 3 stages; save restore; ties; invalid stages; overflow.";
+        string report = "PASS: " + assertions + " assertions; all reachable winning states across " + stages.Length + " stages; save restore; ties; invalid stages; overflow.";
         Directory.CreateDirectory("Artifacts");
         File.WriteAllText("Artifacts/RulesVerification.txt", report);
         Debug.Log(report);
@@ -55,6 +65,7 @@ public static class PrototypeChecks
 
     private static void Explore(StageDefinition stage, StageRun run)
     {
+        if (!exploredStates.Add(run.TowerIndex + ":" + string.Join(",", run.Save(0).clearedMasks))) return;
         Check(StageRun.TryRestore(stage, run.Save(0), out var restored) && restored.Power == run.Power &&
             restored.TowerIndex == run.TowerIndex && restored.Complete == run.Complete, "Every reachable state must round-trip");
         // Exercise Unity's actual JSON serializer too, not just an in-memory snapshot.
@@ -66,8 +77,8 @@ public static class PrototypeChecks
         {
             if (run.IsDefeated(run.TowerIndex, room)) continue;
             long enemy = stage.towers[run.TowerIndex].enemies[room];
-            Check(enemy != run.Power, "No reachable equal-power encounter");
-            if (enemy > run.Power) continue;
+            if (!stage.allowPowerWalls) Check(enemy != run.Power, "No reachable equal-power encounter");
+            if (enemy >= run.Power) continue;
             hasWinningMove = true;
             Check(StageRun.TryRestore(stage, snapshot, out var branch), "Restore branch");
             int previousTower = branch.TowerIndex;
@@ -110,7 +121,7 @@ public static class PrototypeChecks
         if (playGame == null || playGame.Run == null) throw new InvalidOperationException("Game has not started.");
         playGame.RestartStage();
         attackedRoom = null;
-        expectedFinalPower = playGame.Run.Definition.startingPower;
+        expectedFinalPower = playGame.Run.StartingPower;
         foreach (TowerDefinition tower in playGame.Run.Definition.towers)
             foreach (long power in tower.enemies) expectedFinalPower = checked(expectedFinalPower + power);
         failureRoom = -1;
@@ -147,10 +158,20 @@ public static class PrototypeChecks
             if (!checkedFailure)
             {
                 if (!playGame.Run.Failed) { SendPointerSwipe(failureRoom); return; }
-                Check(playGame.Run.Power == playGame.Run.Definition.startingPower, "Failure grants no power");
-                playGame.Continue();
+                Check(playGame.Run.Power == playGame.Run.StartingPower, "Failure grants no power");
+                playGame.RestartStage();
                 Check(!playGame.Run.Failed, "Retry returns to a playable state");
                 checkedFailure = true;
+            }
+            if (playGame.Run.PowerBlocked)
+            {
+                Check(playGame.Run.Definition.allowPowerWalls, "Only progression levels allow a power wall");
+                Check(StageRun.TryRestore(playGame.Run.Definition, playGame.Run.Save(0), out var blocked) && blocked.PowerBlocked,
+                    "Pointer progression stops at a persistent power wall");
+                EditorApplication.update -= TickPlaytest;
+                File.WriteAllText("Artifacts/Playtest.txt", "PASS: pointer attacks, animation and feedback reached the intended power wall after " + swipeCount +
+                    " kills. Use Verify Power Progression for permanent training and full clears.");
+                return;
             }
             if (playGame.Run.Complete)
             {

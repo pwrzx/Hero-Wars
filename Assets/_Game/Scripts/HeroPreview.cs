@@ -73,7 +73,7 @@ namespace TowerTrials
             Canvas canvas = image.canvas;
             float scale = canvas == null ? 1 : canvas.scaleFactor;
             Vector2 size = image.rectTransform.rect.size * scale;
-            float limit = Mathf.Min(1, 2048f / Mathf.Max(1, Mathf.Max(size.x, size.y)));
+            float limit = Mathf.Min(1, 1024f / Mathf.Max(1, Mathf.Max(size.x, size.y)));
             int width = Mathf.Max(64, Mathf.RoundToInt(size.x * limit));
             int height = Mathf.Max(64, Mathf.RoundToInt(size.y * limit));
             if (target != null && target.width == width && target.height == height) return;

@@ -1,0 +1,1 @@
+PASS: 1001 checks, 5 real pointer attacks. Death-screen ad slot, no-provider Retry, skipped/failed ads, cancelled/stale and duplicate rewards, worker-thread confirmation, retained power/cleared rooms, saved revival and post-revive combat. Editor-only provider; no real ads. Original saves restored.

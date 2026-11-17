@@ -1,0 +1,37 @@
+PASS: 36 startup assertions.
+Phone: startup exists before destination activation
+Phone: Series fits
+Phone: HeroTitle fits
+Phone: WarsTitle fits
+Phone: Tagline fits
+Phone: LoadingStatus fits
+Phone: Percentage fits
+Phone: GameplayTip fits
+Phone: Version fits
+Phone: native screen dimensions match capture
+Phone: loading blocks touch input
+Phone: frames advance and progress reaches 100%
+Phone: startup remains visible for the configured minimum
+Phone: Hero Center activates
+Phone: menu is ready when overlay disappears
+Phone: exactly one surviving EventSystem
+Tablet: startup exists before destination activation
+Tablet: Series fits
+Tablet: HeroTitle fits
+Tablet: WarsTitle fits
+Tablet: Tagline fits
+Tablet: LoadingStatus fits
+Tablet: Percentage fits
+Tablet: GameplayTip fits
+Tablet: Version fits
+Tablet: native screen dimensions match capture
+Tablet: loading blocks touch input
+Tablet: frames advance and progress reaches 100%
+Tablet: startup remains visible for the configured minimum
+Tablet: Hero Center activates
+Tablet: menu is ready when overlay disappears
+Tablet: exactly one surviving EventSystem
+Startup does not alter the caller's time scale
+Returning home skips startup
+Missing scene exposes a readable error and retry
+Retry recovers into a ready menu

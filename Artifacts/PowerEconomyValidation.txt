@@ -1,0 +1,1 @@
+PASS: starting with zero gold and zero gems, all 24 levels cleared in 51 attempts with 0 earlier-level farming runs. Final training rank 41, power 24599, gold 6656. No daily rewards or chest income used.

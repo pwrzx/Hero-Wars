@@ -17,6 +17,8 @@ namespace TowerTrials
         public GameObject prefab;
         public Sprite icon;
         public int power;
+        public int PowerBonusPercent => starter || cloak || slot == EquipmentSlot.Skin ? 0 : HeroCenterCatalog.RarityPowerBonusPercent(rarity);
+        public string PowerBonusLabel => PowerBonusPercent > 0 ? "+" + PowerBonusPercent + "% power" : "";
         [Tooltip("Point inside the handle, in the equipment prefab's local coordinates.")]
         public Vector3 gripPoint;
     }
@@ -36,11 +38,13 @@ namespace TowerTrials
             get
             {
                 string text = "";
+                int entries = 0;
                 for (int i = 0; i < weights.Length; i++)
                 {
                     if (weights[i] == 0) continue;
-                    if (text.Length > 0) text += "  /  ";
+                    if (text.Length > 0) text += entries % 2 == 0 ? "\n" : "  /  ";
                     text += weights[i] + "% " + (ItemRarity)i;
+                    entries++;
                 }
                 return text;
             }
@@ -53,13 +57,25 @@ namespace TowerTrials
         public HeroEquipment[] equipment = Array.Empty<HeroEquipment>();
         public HeroChest[] chests = Array.Empty<HeroChest>();
         public Sprite goldIcon, gemIcon, shopIcon, heroIcon, armorIcon, settingsIcon, dailyIcon;
-        public Sprite primaryButton, secondaryButton, slotFrame;
+        public Sprite primaryButton, secondaryButton, beveledButton, slotFrame;
         public Texture2D background;
         public Material weaponMaterial, cloakMaterial;
         public RuntimeAnimatorController armedAnimatorController;
 
         public HeroEquipment Find(string id) => Array.Find(equipment, item => item.id == id);
         public static HeroCenterCatalog Load() => Resources.Load<HeroCenterCatalog>("HeroCenter/Catalog");
+
+        public static int RarityPowerBonusPercent(ItemRarity rarity)
+        {
+            switch (rarity)
+            {
+                case ItemRarity.Common: return 5;
+                case ItemRarity.Rare: return 10;
+                case ItemRarity.Epic: return 20;
+                case ItemRarity.Legendary: return 35;
+                default: return 0;
+            }
+        }
 
         public static Color RarityColor(ItemRarity rarity)
         {

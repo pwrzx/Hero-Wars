@@ -1,0 +1,24 @@
+{
+  "status": "completed",
+  "result": "Succeeded",
+  "platform": "iOS",
+  "outputPath": "D:/Unity/Projects/Hero Wars/Hero Wars/Builds/iOS",
+  "buildTimeMs": 112596,
+  "totalErrors": 0,
+  "totalWarnings": 4,
+  "errors": [],
+  "warnings": [
+    {
+      "message": "Shader warning in 'TextMeshPro/Mobile/Distance Field': #pragma enable_d3d11_debug_symbols has been deprecated, instead please use #pragma enable_debug_symbols at line 84"
+    },
+    {
+      "message": "D:\\Unity\\Projects\\Hero Wars\\Hero Wars\\Library\\Bee\\artifacts\\iOS\\il2cppOutput\\cpp: [Unity.TextMeshPro] - System.Void TMPro.TMP_TextParsingUtilities::.cctor() - Method was given it's own cpp file because it is large and costly to compile"
+    },
+    {
+      "message": "D:\\Unity\\Projects\\Hero Wars\\Hero Wars\\Library\\Bee\\artifacts\\iOS\\il2cppOutput\\cpp: [Unity.TextMeshPro] - System.Void TMPro.TextMeshPro::GenerateTextMesh() - Method was given it's own cpp file because it is large and costly to compile"
+    },
+    {
+      "message": "D:\\Unity\\Projects\\Hero Wars\\Hero Wars\\Library\\Bee\\artifacts\\iOS\\il2cppOutput\\cpp: [Unity.TextMeshPro] - System.Void TMPro.TextMeshProUGUI::GenerateTextMesh() - Method was given it's own cpp file because it is large and costly to compile"
+    }
+  ]
+}

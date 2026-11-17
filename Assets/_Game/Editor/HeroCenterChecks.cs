@@ -66,7 +66,8 @@ public static class HeroCenterChecks
         int gold = restored.gold, gems = restored.gems;
         Check(!restored.TryClaimDaily(day.AddHours(2)) && restored.gold == gold && restored.gems == gems, "Daily reward cannot be claimed twice");
         Check(restored.TryClaimDaily(day.AddDays(1)), "Next UTC day resets the gift");
-        Check(UnityEditor.EditorBuildSettings.scenes[0].path == HeroCenterSetup.ScenePath, "Hero Center is the startup scene");
+        Check(EditorBuildSettings.scenes[0].path == StartupLoadingSetup.ScenePath &&
+            EditorBuildSettings.scenes[1].path == HeroCenterSetup.ScenePath, "Startup hands off to Hero Center in builds");
         VerifyEquipment(catalog, Check);
         VerifyCombatMotion(catalog, Check);
         string report = "PASS: " + assertions + " Hero Center assertions.\nCatalog references, starter/locked heroes, rarity pools, 1,600 seeded chest openings, exact currency transactions, duplicates, equipment gates, save repair, daily gifts and startup scene.\nAll four hero rigs, nine weapons and three shields at portrait/gameplay sizes with rotated parents; closed idle grips; handle alignment through idle, running, attack, jump and death animations.\nCloaks remain visible on their original heroes and are absent from equipment/reward pools. Retired cloak loadouts repair to an owned shield. Repeated combat interrupts the jump immediately, samples a moving weapon before impact, and returns to idle without a delayed attack.\n";

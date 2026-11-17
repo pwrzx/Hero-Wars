@@ -15,6 +15,7 @@ namespace TowerTrials
         private float gravity, fallingTime, peakSpeed;
         private int stableSteps;
         private bool supported, impactReported;
+        private readonly Collider[] supportCandidates = new Collider[24];
         public bool IsSettling { get; private set; }
         public int LandingCount { get; private set; }
         public int RecoveryCount { get; private set; }
@@ -76,8 +77,12 @@ namespace TowerTrials
             if (!IsSettling) return;
             fallingTime += Time.fixedDeltaTime;
             peakSpeed = Mathf.Max(peakSpeed, -body.linearVelocity.y);
-            bool atRest = supported && Mathf.Abs(body.position.y - restPosition.y) < 0.025f &&
-                Mathf.Abs(body.linearVelocity.y) < 0.2f;
+            bool nearRest = Mathf.Abs(body.position.y - restPosition.y) < 0.025f && Mathf.Abs(body.linearVelocity.y) < 0.2f;
+            // Sleeping physics islands can stop sending Stay events. Confirm their real
+            // support geometry instead of waiting for a callback that may never arrive.
+            if (nearRest && !supported) supported = HasSupport();
+            bool atRest = supported && nearRest;
+            if (atRest && !impactReported) ReportLanding(body.position - Vector3.up * 0.1f);
             stableSteps = atRest ? stableSteps + 1 : 0;
             if (stableSteps >= 3)
             {
@@ -108,13 +113,33 @@ namespace TowerTrials
                 if (contact.normal.y < 0.5f) continue;
                 supported = true;
                 if (impactReported || Mathf.Abs(body.position.y - restPosition.y) > 0.04f) continue;
-                impactReported = true;
-                LandingCount++;
-                float strength = Mathf.Clamp01(peakSpeed / 10);
-                if (feedback != null) feedback.Landing(contact.point);
-                if (audioFeedback != null) audioFeedback.Play(CombatSound.Collapse);
-                if (passenger != null) passenger.ReactToLanding(strength);
+                ReportLanding(contact.point);
             }
+        }
+
+        private bool HasSupport()
+        {
+            Vector3 scale = transform.lossyScale;
+            float floor = body.position.y - 0.1f * scale.y;
+            int count = Physics.OverlapBoxNonAlloc(new Vector3(body.position.x, floor - 0.01f * scale.y, body.position.z),
+                Vector3.Scale(new Vector3(1.23f, 0.035f, 0.71f), scale), supportCandidates, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                Collider candidate = supportCandidates[i];
+                if (candidate.attachedRigidbody == body || candidate.transform.IsChildOf(transform)) continue;
+                if (Mathf.Abs(candidate.bounds.max.y - floor) < 0.045f * scale.y) return true;
+            }
+            return false;
+        }
+
+        private void ReportLanding(Vector3 point)
+        {
+            impactReported = true;
+            LandingCount++;
+            float strength = Mathf.Clamp01(peakSpeed / 10);
+            if (feedback != null) feedback.Landing(point);
+            if (audioFeedback != null) audioFeedback.Play(CombatSound.Collapse);
+            if (passenger != null) passenger.ReactToLanding(strength);
         }
 
         private void LockAtRest()

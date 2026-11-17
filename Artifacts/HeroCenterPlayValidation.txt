@@ -1,3 +1,3 @@
-PASS: 40 live checks.
+PASS: 44 live checks.
 Real UI raycasts and pointer handlers; locked hero preview; chest payment/reveal; reward equip; save restore; daily claim protection; adventure; imported hero; Home return.
 Original player and campaign saves restored.

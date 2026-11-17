@@ -1,0 +1,1 @@
+PASS: 19 controller/menu checks. No automatic wall popup; actual defeat, ad or Main menu, confirmed twenty-percent revive, saved boosted power, no duplicate gold, real gold-training purchase and fitting text. Original player data and ad provider restored.
